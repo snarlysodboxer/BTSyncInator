@@ -1,4 +1,4 @@
 btsyncinator
 ============
 
-Multiple :wBitTorrent Sync Daemon Manager.
+Multiple BitTorrent Sync Daemon Manager.
