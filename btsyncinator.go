@@ -1,6 +1,7 @@
 package main
 
 import (
+  "fmt"
   btsync "github.com/vole/btsync-api"
   "log"
   "net/http"
@@ -18,7 +19,7 @@ var (
 
 type Folder struct {
   Folder      btsync.Folder
-  Files       []btsync.File
+  Files       *btsync.GetFilesResponse
   Secrets     *btsync.GetSecretsResponse
 }
 
@@ -39,64 +40,42 @@ type DaemonAPI struct {
 
 type DaemonAPIs []DaemonAPI
 
-func ExtendDaemonAPIsSlice(slice []DaemonAPI, element DaemonAPI) []DaemonAPI {
-    n := len(slice)
-    if n == cap(slice) {
-        // Slice is full; must grow.
-        // We double its size and add 1, so if the size is zero we still grow.
-        newSlice := make([]DaemonAPI, len(slice), 2*len(slice)+1)
-        copy(newSlice, slice)
-        slice = newSlice
+func loadFolders(api *btsync.BTSyncAPI) ([]Folder, error) {
+  var heir error = nil
+  folders, err := api.GetFolders()
+  if err != nil {
+    heir = err
+  }
+  fldrs := *new([]Folder)
+  for _, folder := range *folders {
+    fldr := &Folder{}
+    fldr.Folder = folder
+    // Get Files for folder:
+    files, err := api.GetFilesForPath(folder.Secret, "")
+    if err != nil {
+      heir = err
     }
-    slice = slice[0 : n+1]
-    slice[n] = element
-    return slice
-}
-
-func ExtendFoldersSlice(slice []Folder, element Folder) []Folder {
-    n := len(slice)
-    if n == cap(slice) {
-        // Slice is full; must grow.
-        // We double its size and add 1, so if the size is zero we still grow.
-        newSlice := make([]Folder, len(slice), 2*len(slice)+1)
-        copy(newSlice, slice)
-        slice = newSlice
+    fldr.Files = files
+    // Get Secrets for folder:
+    secrets, err := api.GetSecretsForSecret(folder.Secret)
+    if err != nil {
+      heir = err
     }
-    slice = slice[0 : n+1]
-    slice[n] = element
-    return slice
+    fldr.Secrets = secrets
+    fldrs = ExtendFoldersSlice(fldrs, *fldr)
+  }
+  return fldrs, heir
 }
 
 func loadAPIData(localPort int) APIData {
   api := btsync.New("", "", localPort, false)
   data := APIData{}
   data.Error = nil
-  // Get folders:
-  folders, err := api.GetFolders()
+  folders, err := loadFolders(api)
   if err != nil {
     data.Error = err
   }
-  // TODO: extract this
-  // For each folder:
-  fldrs := *new([]Folder)
-  for _, folder := range *folders {
-    fldr := Folder{}
-    fldr.Folder = folder
-    // Get Files for folder:
-    files, err := api.GetFilesForPath(folder.Secret, "")
-    if err != nil {
-      data.Error = err
-    }
-    fldr.Files = *files
-    // Get Secrets for folder:
-    secrets, err := api.GetSecretsForSecret(folder.Secret)
-    if err != nil {
-      data.Error = err
-    }
-    fldr.Secrets = secrets
-    fldrs = ExtendFoldersSlice(fldrs, fldr)
-  }
-  data.Folders = fldrs
+  data.Folders = folders
   // Get the OS:
   os, err := api.GetOS()
   if err != nil {
@@ -104,11 +83,12 @@ func loadAPIData(localPort int) APIData {
   }
   data.OS = os.Name
   // Get general Preferences:
-  preferences, _ := api.GetPreferences()
-//  preferences, err := api.GetPreferences()
-//  if err != nil {
-//    data.Error = err
-//  }
+  preferences, err := api.GetPreferences()
+  if err != nil {
+    // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
+    //data.Error = err
+    //fmt.Printf("Error with GetPreferences! %s", err)
+  }
   data.Preferences = preferences
   return data
 }
@@ -181,6 +161,34 @@ func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
   } else {
     log.Fatal(writer, "Error with RemoveSection!")
   }
+}
+
+func ExtendDaemonAPIsSlice(slice []DaemonAPI, element DaemonAPI) []DaemonAPI {
+    n := len(slice)
+    if n == cap(slice) {
+        // Slice is full; must grow.
+        // We double its size and add 1, so if the size is zero we still grow.
+        newSlice := make([]DaemonAPI, len(slice), 2*len(slice)+1)
+        copy(newSlice, slice)
+        slice = newSlice
+    }
+    slice = slice[0 : n+1]
+    slice[n] = element
+    return slice
+}
+
+func ExtendFoldersSlice(slice []Folder, element Folder) []Folder {
+    n := len(slice)
+    if n == cap(slice) {
+        // Slice is full; must grow.
+        // We double its size and add 1, so if the size is zero we still grow.
+        newSlice := make([]Folder, len(slice), 2*len(slice)+1)
+        copy(newSlice, slice)
+        slice = newSlice
+    }
+    slice = slice[0 : n+1]
+    slice[n] = element
+    return slice
 }
 
 func main() {
