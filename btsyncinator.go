@@ -2,7 +2,6 @@ package main
 
 import (
   btsync "github.com/vole/btsync-api"
-  "fmt"
   "log"
   "net/http"
   "html/template"
@@ -24,6 +23,7 @@ type Folder struct {
 }
 
 type APIData struct {
+  Error       error
   Folders     []Folder
   OS          string
   Preferences *btsync.GetPreferencesResponse
@@ -70,33 +70,45 @@ func ExtendFoldersSlice(slice []Folder, element Folder) []Folder {
 func loadAPIData(localPort int) APIData {
   api := btsync.New("", "", localPort, false)
   data := APIData{}
+  data.Error = nil
   // Get folders:
   folders, err := api.GetFolders()
   if err != nil {
-    log.Fatalf("Error with GetFolders! %s", err)
+    data.Error = err
   }
+  // TODO: extract this
   // For each folder:
   fldrs := *new([]Folder)
   for _, folder := range *folders {
     fldr := Folder{}
     fldr.Folder = folder
     // Get Files for folder:
-    files, _ := api.GetFilesForPath(folder.Secret, "")
+    files, err := api.GetFilesForPath(folder.Secret, "")
+    if err != nil {
+      data.Error = err
+    }
     fldr.Files = *files
     // Get Secrets for folder:
     secrets, err := api.GetSecretsForSecret(folder.Secret)
     if err != nil {
-      log.Fatalf("Error with GetSecretsForSecret! %s", err)
+      data.Error = err
     }
     fldr.Secrets = secrets
     fldrs = ExtendFoldersSlice(fldrs, fldr)
   }
   data.Folders = fldrs
   // Get the OS:
-  os, _ := api.GetOS()
+  os, err := api.GetOS()
+  if err != nil {
+    data.Error = err
+  }
   data.OS = os.Name
   // Get general Preferences:
   preferences, _ := api.GetPreferences()
+//  preferences, err := api.GetPreferences()
+//  if err != nil {
+//    data.Error = err
+//  }
   data.Preferences = preferences
   return data
 }
@@ -105,12 +117,12 @@ func loadDaemonAPIs() DaemonAPIs {
   daemonAPIs := DaemonAPIs{}
   // TODO: create a less fragile way to remove the "default" section.
   sections := config.GetSections()
-  for _, section := range sections[1:] {
+  for index, section := range sections[1:] {
     daemonAPI := DaemonAPI{}
     daemonAPI.Name = section
     daemonAPI.FQDN, _ = config.GetString(section, "fqdn")
     daemonAPI.DaemonPort, _ = config.GetInt(section, "daemon_port")
-    daemonAPI.LocalPort, _ = config.GetInt(section, "local_port")
+    daemonAPI.LocalPort = 9000 + index
     daemonAPI.APIData = loadAPIData(daemonAPI.LocalPort)
     daemonAPIs = ExtendDaemonAPIsSlice(daemonAPIs, daemonAPI)
   }
@@ -167,7 +179,7 @@ func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
       http.Redirect(writer, request, "/config", http.StatusFound)
     }
   } else {
-    fmt.Fprint(writer, "Error with RemoveSection!")
+    log.Fatal(writer, "Error with RemoveSection!")
   }
 }
 
@@ -188,34 +200,3 @@ func main() {
   http.HandleFunc("/", rootHandler)
   http.ListenAndServe("localhost:10000", nil)
 }
-//  for _, daemon := range daemons {
-//    api := btsync.New("", "", daemon.Port, false)
-//    fmt.Fprint(writer, heading(daemon))
-//
-//    // Get a list of Sync folders.
-//    folders, err := api.GetFolders()
-//    if err != nil {
-//      log.Fatalf("Error with GetFolders! %s", err)
-//    }
-//    for _, folder := range *folders {
-//      fmt.Fprintf(writer, "Sync folder %s has %d files\n", folder.Dir, folder.Files)
-//      secrets, err := api.GetSecretsForSecret(folder.Secret)
-//      if err != nil {
-//        log.Fatalf("Error with GetSecretsForSecret! %s", err)
-//      }
-//      fmt.Fprintf(writer, "\tAnd has this read-write secret: %s\n", secrets.ReadWrite)
-//      fmt.Fprintf(writer, "\tAnd has this read-only secret: %s\n", secrets.ReadOnly)
-//      // Get a list of files in the folder.
-//      files, err := api.GetFiles(folder.Secret)
-//      if err != nil {
-//        log.Fatalf("Error with GetFiles! %s", err)
-//      }
-//      for _, file := range *files {
-//        fmt.Fprintf(writer, "\tFile %s has size %dK\n", file.Name, (file.Size/1000))
-//      }
-//    }
-//
-//    // Get Sync's current upload/download speed.
-//    speed, _ := api.GetSpeed()
-//    fmt.Fprintf(writer, "Speed: upload=%d, download=%d", speed.Upload, speed.Download)
-//  }

@@ -4,7 +4,7 @@
 <form action="/config/delete" method="POST">
   <div><p>{{printf "%s" .Name}}
   {{printf "%s" .FQDN}}
-  {{printf "%d" .LocalPort}}
+  {{printf "%d" .DaemonPort}}
   <input type="hidden" name="DeleteName" value='{{.Name}}'>
   <input type="submit" value="Delete {{.Name}}"></p></div>
 </form>
