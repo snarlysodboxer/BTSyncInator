@@ -1,0 +1,17 @@
+<h1>BTSyncInator Configuration</h1>
+
+{{range .}}
+<form action="/config/delete" method="POST">
+  <div><p>{{printf "%s" .Name}}
+  {{printf "%s" .FQDN}}
+  {{printf "%d" .LocalPort}}
+  <input type="hidden" name="DeleteName" value='{{.Name}}'>
+  <input type="submit" value="Delete {{.Name}}"></p></div>
+</form>
+{{end}}
+<form action="/config/create" method="POST">
+  <div><p><textarea name="Name" rows="1" cols="30">{{printf "%s" "Reference Name"}}</textarea>
+          <textarea name="FQDN" rows="1" cols="30">{{printf "%s" "example.colortechnology.com"}}</textarea>
+          <textarea name="Port" rows="1" cols="30">{{printf "%d" 9999}}</textarea>
+  <input type="submit" value="Create"></p></div>
+</form>
