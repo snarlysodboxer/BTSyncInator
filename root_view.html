@@ -7,6 +7,12 @@
     <h2>BTSync Daemon On {{.Name}}, ({{.FQDN}}) - {{.APIData.OS}}</h2>
     <div>
       {{with .APIData}}
+        {{with .Speeds}}
+          <ul>
+            <li>{{printf "Download Speed: %d" .Download}}</li>
+            <li>{{printf "Upload Speed: %d" .Upload}}</li>
+          </ul>
+        {{end}}
         {{with .Preferences}}
           <ul>
             <li>{{printf "Device Name: %s" .DeviceName}}</li>
