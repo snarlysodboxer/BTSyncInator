@@ -4,7 +4,7 @@
   {{if .APIData.Error}}
     <h2>BTSync Daemon On {{.Name}}, ({{.FQDN}}) has Error {{.APIData.Error}}</h2>
   {{else}}
-    <h2>BTSync Daemon On {{.Name}}, ({{.FQDN}}) - {{.APIData.OS}}</h2>
+    <h2>BTSync Daemon On {{.Name}}, ({{.FQDN}}) - {{.APIData.OS.Name}}</h2>
     <div>
       {{with .APIData}}
         {{with .Speeds}}
@@ -44,27 +44,30 @@
             {{printf "and has an indexing status of %b." .Indexing}}
           {{end}}
         </h3>
+        <ul>
           {{with .Secrets}}
-            <ul>
-              <li>{{printf "RW Secret: %s" .ReadWrite}}</li>
-              <li>{{printf "RO Secret: %s" .ReadOnly}}</li>
-              <li>{{printf "Encryption Secret: %s" .Encryption}}
-              </li>
-            </ul>
+            <li>{{printf "RW Secret: %s" .ReadWrite}}</li>
+            <li>{{printf "RO Secret: %s" .ReadOnly}}</li>
+            <li>{{printf "Encryption Secret: %s" .Encryption}}</li>
           {{end}}
-          <ul>
-            {{range .Files}}
-              <li>
-              {{printf "File %s" .Name}}
-              {{printf "has %d pieces," .HavePieces}}
-              {{printf "out of %d," .TotalPieces}}
-              {{printf "is %d bytes," .Size}}
-              {{printf "has a status of %s," .State}}
-              {{printf "is a %s," .Type}}
-              {{printf "and has a download status of %d." .Download}}
-              </li>
-            {{end}}
-          </ul>
+          <li>Only syncs with:</li>
+          {{range .SyncHosts}}
+            <li>{{printf "%s" .}}</li>
+          {{end}}
+        </ul>
+        <ul>
+          {{range .Files}}
+            <li>
+            {{printf "File %s" .Name}}
+            {{printf "has %d pieces," .HavePieces}}
+            {{printf "out of %d," .TotalPieces}}
+            {{printf "is %d bytes," .Size}}
+            {{printf "has a status of %s," .State}}
+            {{printf "is a %s," .Type}}
+            {{printf "and has a download status of %d." .Download}}
+            </li>
+          {{end}}
+        </ul>
         {{end}}
       {{end}}
     </div>

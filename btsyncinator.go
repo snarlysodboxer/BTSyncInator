@@ -18,11 +18,7 @@ var (
   config = conf.NewConfigFile()
 )
 
-type Folder struct {
-  Folder      btsync.Folder
-  Files       *btsync.GetFilesResponse
-  Secrets     *btsync.GetSecretsResponse
-}
+type DaemonAPIs []DaemonAPI
 
 type DaemonAPI struct {
   Name        string
@@ -32,21 +28,35 @@ type DaemonAPI struct {
   APIData     APIData
 }
 
+func loadDaemonAPIs() DaemonAPIs {
+  daemonAPIs := DaemonAPIs{}
+  // TODO: create a less fragile way to remove the "default" section.
+  sections := config.GetSections()
+  for index, section := range sections[1:] {
+    daemonAPI := DaemonAPI{}
+    daemonAPI.Name = section
+    daemonAPI.FQDN, _ = config.GetString(section, "fqdn")
+    daemonAPI.DaemonPort, _ = config.GetInt(section, "daemon_port")
+    daemonAPI.LocalPort = 9000 + index
+    daemonAPI.APIData = loadAPIAllData(daemonAPI.LocalPort)
+    daemonAPIs = append(daemonAPIs, daemonAPI)
+  }
+  return daemonAPIs
+}
+
 type APIData struct {
   Error       error
   Folders     []Folder
-  OS          string
+  OS          *btsync.GetOSResponse
   Preferences *btsync.GetPreferencesResponse
   Speeds      *btsync.GetSpeedResponse
 }
 
-type DaemonAPIs []DaemonAPI
-
-func loadAPIData(localPort int) APIData {
+func loadAPIAllData(localPort int) APIData {
   api := btsync.New("", "", localPort, false)
   data := APIData{}
   data.Error = nil
-  folders, err := loadFolders(api)
+  folders, err := loadAPIFoldersData(api)
   if err != nil {
     data.Error = err
   }
@@ -56,7 +66,7 @@ func loadAPIData(localPort int) APIData {
   if err != nil {
     data.Error = err
   }
-  data.OS = os.Name
+  data.OS = os
   // Get Upload and Download speed
   speeds, err := api.GetSpeed()
   if err != nil {
@@ -74,47 +84,33 @@ func loadAPIData(localPort int) APIData {
   return data
 }
 
-func loadFolders(api *btsync.BTSyncAPI) ([]Folder, error) {
-  var heir error = nil
+type Folder struct {
+  Folder      btsync.Folder
+  Secrets     *btsync.GetSecretsResponse
+  SyncHosts   *btsync.GetFolderHostsResponse
+  Files       *btsync.GetFilesResponse
+}
+
+func loadAPIFoldersData(api *btsync.BTSyncAPI) ([]Folder, error) {
+  var err error = nil
   folders, err := api.GetFolders()
-  if err != nil {
-    heir = err
-  }
   fldrs := *new([]Folder)
   for _, folder := range *folders {
     fldr := &Folder{}
     fldr.Folder = folder
     // Get Files for folder:
-    files, err := api.GetFilesForPath(folder.Secret, "")
-    if err != nil {
-      heir = err
-    }
-    fldr.Files = files
+    fldr.Files, err = api.GetFilesForPath(folder.Secret, "")
     // Get Secrets for folder:
-    secrets, err := api.GetSecretsForSecret(folder.Secret)
-    if err != nil {
-      heir = err
-    }
-    fldr.Secrets = secrets
+    fldr.Secrets, err = api.GetSecretsForSecret(folder.Secret)
+    // Get Known Hosts for folder:
+    //// TODO: Fix "json: cannot unmarshal object into Go
+    ////     value of type btsync_api.GetFolderHostsResponse" bug
+    ////fldr.SyncHosts, err = api.GetFolderHosts(folder.Secret)
+    fldr.SyncHosts, _ = api.GetFolderHosts(folder.Secret)
+
     fldrs = append(fldrs, *fldr)
   }
-  return fldrs, heir
-}
-
-func loadDaemonAPIs() DaemonAPIs {
-  daemonAPIs := DaemonAPIs{}
-  // TODO: create a less fragile way to remove the "default" section.
-  sections := config.GetSections()
-  for index, section := range sections[1:] {
-    daemonAPI := DaemonAPI{}
-    daemonAPI.Name = section
-    daemonAPI.FQDN, _ = config.GetString(section, "fqdn")
-    daemonAPI.DaemonPort, _ = config.GetInt(section, "daemon_port")
-    daemonAPI.LocalPort = 9000 + index
-    daemonAPI.APIData = loadAPIData(daemonAPI.LocalPort)
-    daemonAPIs = append(daemonAPIs, daemonAPI)
-  }
-  return daemonAPIs
+  return fldrs, err
 }
 
 func rootHandler(writer http.ResponseWriter, request *http.Request) {
