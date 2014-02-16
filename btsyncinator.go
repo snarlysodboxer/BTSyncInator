@@ -168,7 +168,10 @@ func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func main() {
+  // Parse Command line flags
   flag.Parse()
+
+  // Load or create config file
   if _, err := os.Stat(*config_file_path); os.IsNotExist(err) {
     config.WriteConfigFile(*config_file_path, 0600, header)
   } else {
@@ -178,6 +181,7 @@ func main() {
     }
   }
 
+  // Respond to http resquests
   http.HandleFunc("/config", configViewHandler)
   http.HandleFunc("/config/delete", configDeleteHandler)
   http.HandleFunc("/config/create", configCreateHandler)

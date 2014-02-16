@@ -80,8 +80,8 @@ func forward(localConn net.Conn, config *ssh.ClientConfig) {
 }
 
 func main() {
-  keychain := new(keyChain)
   // Load id_rsa file
+  keychain := new(keyChain)
   err := keychain.loadPEM("/home/myuser/.ssh/id_rsa")
   if err != nil {
     log.Fatalf("Cannot load key: %v", err)
