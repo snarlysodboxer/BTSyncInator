@@ -7,21 +7,46 @@ import (
 	"io"
 	"log"
 	"net"
-	//  "fmt"
+  "io/ioutil"
 )
 
 var (
 	username         = "root"
-	password         = clientPassword("password")
 	serverAddrString = "192.168.1.100:22"
 	localAddrString  = "localhost:9000"
 	remoteAddrString = "localhost:9999"
 )
 
-type clientPassword string
+type keyChain struct {
+  keys []ssh.Signer
+}
 
-func (password clientPassword) Password(user string) (string, error) {
-	return string(password), nil
+func (keychain *keyChain) Key(number int) (ssh.PublicKey, error) {
+  if number < 0 || number >= len(keychain.keys) {
+    return nil, nil
+  }
+  return keychain.keys[number].PublicKey(), nil
+}
+
+func (keychain *keyChain) Sign(number int, rand io.Reader, data []byte) (sig []byte, err error) {
+  return keychain.keys[number].Sign(rand, data)
+}
+
+func (keychain *keyChain) add(key ssh.Signer) {
+  keychain.keys = append(keychain.keys, key)
+}
+
+func (keychain *keyChain) loadPEM(file string) error {
+  buf, err := ioutil.ReadFile(file)
+  if err != nil {
+    return err
+  }
+  key, err := ssh.ParsePrivateKey(buf)
+  if err != nil {
+    return err
+  }
+  keychain.add(key)
+  return nil
 }
 
 func forward(localConn net.Conn, config *ssh.ClientConfig) {
@@ -33,6 +58,9 @@ func forward(localConn net.Conn, config *ssh.ClientConfig) {
 
 	// Setup sshConn (type net.Conn)
 	sshConn, err := sshClientConn.Dial("tcp", remoteAddrString)
+	if err != nil {
+		log.Fatalf("sshClientConn.Dial failed: %s", err)
+	}
 
 	// Copy localConn.Reader to sshConn.Writer
 	go func() {
@@ -52,11 +80,18 @@ func forward(localConn net.Conn, config *ssh.ClientConfig) {
 }
 
 func main() {
+  keychain := new(keyChain)
+  // Load id_rsa file
+  err := keychain.loadPEM("/home/myuser/.ssh/id_rsa")
+  if err != nil {
+    log.Fatalf("Cannot load key: %v", err)
+  }
+
 	// Setup SSH config (type *ssh.ClientConfig)
 	config := &ssh.ClientConfig{
 		User: username,
 		Auth: []ssh.ClientAuth{
-			ssh.ClientAuthPassword(password),
+			ssh.ClientAuthKeyring(keychain),
 		},
 	}
 
