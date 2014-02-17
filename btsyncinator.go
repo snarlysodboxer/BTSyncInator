@@ -12,10 +12,10 @@ import (
   //"github.com/snarlysodboxer/portforward"
 )
 
+const configHeader = "Configuration file for BTSyncInator:"
 var (
-  header = "Configuration file for BTSyncInator:"
-  config_file_path = flag.String("config_file", ".btsyncinator.conf", "path to config file.")
-  //config_file_path = flag.String("privatekey_file", "$HOME/.ssh/id_rsa", "path to privatekey file.")
+  configFilePath = flag.String("config_file", ".btsyncinator.conf", "path to config file.")
+  //configFilePath = flag.String("privatekey_file", "$HOME/.ssh/id_rsa", "path to privatekey file.")
   config = conf.NewConfigFile()
 )
 
@@ -120,63 +120,15 @@ func rootHandler(writer http.ResponseWriter, request *http.Request) {
   tmpl.Execute(writer, daemonAPIs)
 }
 
-func configViewHandler(writer http.ResponseWriter, request *http.Request) {
-  daemonAPIs := loadDaemonAPIs()
-  tmpl, err := template.ParseFiles("config_view.html")
-  if err != nil {
-    log.Fatalf("Error with ParseFiles! %s", err)
-  }
-  tmpl.Execute(writer, daemonAPIs)
-}
-
-func configCreateHandler(writer http.ResponseWriter, request *http.Request) {
-  // AddSection and AddOption return boolean
-  if config.AddSection(request.FormValue("Name")) {
-    if config.AddOption(request.FormValue("Name"), "fqdn", request.FormValue("FQDN")) {
-      if config.AddOption(request.FormValue("Name"), "daemon_port", request.FormValue("Port")) {
-        err := config.WriteConfigFile(*config_file_path, 0600, header)
-        if err != nil {
-          log.Fatalf("Error with WriteConfigFile: %s", err)
-        }
-      }
-      daemons, err := conf.ReadConfigFile(*config_file_path)
-      if err != nil {
-        log.Fatalf("Error with ReadConfigFile: %s", err)
-      } else {
-        config = daemons
-        http.Redirect(writer, request, "/config", http.StatusFound)
-      }
-    }
-  }
-}
-
-func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
-  if config.RemoveSection(request.FormValue("DeleteName")) {
-    err := config.WriteConfigFile(*config_file_path, 0600, header)
-    if err != nil {
-      log.Fatalf("Error with WriteConfigFile: %s", err)
-    }
-    daemons, err := conf.ReadConfigFile(*config_file_path)
-    if err != nil {
-      log.Fatalf("Error with ReadConfigFile: %s", err)
-    } else {
-      config = daemons
-      http.Redirect(writer, request, "/config", http.StatusFound)
-    }
-  } else {
-    log.Fatal(writer, "Error with RemoveSection!")
-  }
-}
-
 func main() {
   // Parse Command line flags
   flag.Parse()
 
   // Load or create config file
-  if _, err := os.Stat(*config_file_path); os.IsNotExist(err) {
-    config.WriteConfigFile(*config_file_path, 0600, header)
+  if _, err := os.Stat(*configFilePath); os.IsNotExist(err) {
+    config.WriteConfigFile(*configFilePath, 0600, configHeader)
   } else {
-    config, err = conf.ReadConfigFile(*config_file_path)
+    config, err = conf.ReadConfigFile(*configFilePath)
     if err != nil {
       log.Fatal("Error with ReadConfigFile:", err)
     }
