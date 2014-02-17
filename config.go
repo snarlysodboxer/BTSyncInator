@@ -5,6 +5,15 @@ import (
   "net/http"
   "html/template"
   "code.google.com/p/goconf/conf"
+  "flag"
+)
+
+const configHeader = "Configuration file for BTSyncInator:"
+
+var (
+  configFilePath = flag.String("config_file", ".btsyncinator.conf", "path to config file.")
+  privatekeyFilePath = flag.String("privatekey_file", "/home/user/.ssh/id_rsa", "path to privatekey file.")
+  config = conf.NewConfigFile()
 )
 
 func configViewHandler(writer http.ResponseWriter, request *http.Request) {

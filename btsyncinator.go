@@ -1,7 +1,7 @@
 package main
 
 import (
-  //"fmt"
+  "fmt"
   btsync "github.com/vole/btsync-api"
   "log"
   "net/http"
@@ -9,24 +9,18 @@ import (
   "flag"
   "code.google.com/p/goconf/conf"
   "os"
-  //"github.com/snarlysodboxer/portforward"
-)
-
-const configHeader = "Configuration file for BTSyncInator:"
-var (
-  configFilePath = flag.String("config_file", ".btsyncinator.conf", "path to config file.")
-  //configFilePath = flag.String("privatekey_file", "$HOME/.ssh/id_rsa", "path to privatekey file.")
-  config = conf.NewConfigFile()
+  "github.com/snarlysodboxer/sshPortForward"
 )
 
 type DaemonAPIs []DaemonAPI
 
 type DaemonAPI struct {
-  Name        string
-  FQDN        string
-  DaemonPort  int
-  LocalPort   int
-  APIData     APIData
+  Name              string
+  ServerAddrString  string
+  DaemonAddrString  string
+  LocalAddrString   string
+  APIData           APIData
+  SSHUserString     string
 }
 
 func loadDaemonAPIs() DaemonAPIs {
@@ -34,12 +28,19 @@ func loadDaemonAPIs() DaemonAPIs {
   // TODO: create a less fragile way to remove the "default" section.
   sections := config.GetSections()
   for index, section := range sections[1:] {
+    localPortInt := 9000 + index
     daemonAPI := DaemonAPI{}
-    daemonAPI.Name = section
-    daemonAPI.FQDN, _ = config.GetString(section, "fqdn")
-    daemonAPI.DaemonPort, _ = config.GetInt(section, "daemon_port")
-    daemonAPI.LocalPort = 9000 + index
-    daemonAPI.APIData = loadAPIAllData(daemonAPI.LocalPort)
+    daemonAPI.Name                = section
+    daemonAPI.ServerAddrString, _ = config.GetString(section, "serverAddrString")
+    daemonAPI.DaemonAddrString, _ = config.GetString(section, "daemonAddrString")
+    daemonAPI.LocalAddrString     = fmt.Sprintf("localhost:%d", localPortInt)
+    daemonAPI.SSHUserString, _    = config.GetString(section, "sshUserString")
+    // Create portforward
+    err := sshPortForward.ConnectAndForward(daemonAPI.SSHUserString, daemonAPI.ServerAddrString, daemonAPI.LocalAddrString, daemonAPI.DaemonAddrString, *privatekeyFilePath)
+    if err != nil {
+      log.Fatalf("Error with ConnectAndForward %v", err)
+    }
+    daemonAPI.APIData = loadAPIAllData(localPortInt)
     daemonAPIs = append(daemonAPIs, daemonAPI)
   }
   return daemonAPIs
