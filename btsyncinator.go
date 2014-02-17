@@ -9,12 +9,13 @@ import (
   "flag"
   "code.google.com/p/goconf/conf"
   "os"
-  //"github.com/snarlysodboxer/btsyncinator/portforward"
+  //"github.com/snarlysodboxer/portforward"
 )
 
 var (
   header = "Configuration file for BTSyncInator:"
   config_file_path = flag.String("config_file", ".btsyncinator.conf", "path to config file.")
+  //config_file_path = flag.String("privatekey_file", "$HOME/.ssh/id_rsa", "path to privatekey file.")
   config = conf.NewConfigFile()
 )
 
