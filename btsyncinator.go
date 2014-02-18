@@ -10,40 +10,51 @@ import (
   "code.google.com/p/goconf/conf"
   "os"
   "github.com/snarlysodboxer/sshPortForward"
+  "strings"
+  "strconv"
 )
 
-type DaemonAPIs []DaemonAPI
+type Daemons []Daemon
 
-type DaemonAPI struct {
+type Daemon struct {
   Name              string
-  ServerAddrString  string
-  DaemonAddrString  string
-  LocalAddrString   string
+  Addresses         sshPortForward.Addresses
   APIData           APIData
-  SSHUserString     string
 }
 
-func loadDaemonAPIs() DaemonAPIs {
-  daemonAPIs := DaemonAPIs{}
-  // TODO: create a less fragile way to remove the "default" section.
-  sections := config.GetSections()
-  for index, section := range sections[1:] {
-    localPortInt := 9000 + index
-    daemonAPI := DaemonAPI{}
-    daemonAPI.Name                = section
-    daemonAPI.ServerAddrString, _ = config.GetString(section, "serverAddrString")
-    daemonAPI.DaemonAddrString, _ = config.GetString(section, "daemonAddrString")
-    daemonAPI.LocalAddrString     = fmt.Sprintf("localhost:%d", localPortInt)
-    daemonAPI.SSHUserString, _    = config.GetString(section, "sshUserString")
+func loadDaemonsFromConfig(sections *[]string) {
+  for index, section := range *sections {
+    daemon := Daemon{}
+    daemon.Name                           = section
+    daemon.Addresses.SSHUserString, _     = config.GetString(section, "sshUserString")
+    daemon.Addresses.ServerAddrString, _  = config.GetString(section, "serverAddrString")
+    daemon.Addresses.RemoteAddrString, _  = config.GetString(section, "daemonAddrString")
+    daemon.Addresses.LocalAddrString      = fmt.Sprintf("localhost:%d", 9000 + index)
+    daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
+    daemons = append(daemons, daemon)
+  }
+}
+
+func (daemons *Daemons) createPortForwards() {
+  for _, daemon := range *daemons {
     // Create portforward
-    err := sshPortForward.ConnectAndForward(daemonAPI.SSHUserString, daemonAPI.ServerAddrString, daemonAPI.LocalAddrString, daemonAPI.DaemonAddrString, *privatekeyFilePath)
+    err := sshPortForward.ConnectAndForward(daemon.Addresses)
     if err != nil {
       log.Fatalf("Error with ConnectAndForward %v", err)
     }
-    daemonAPI.APIData = loadAPIAllData(localPortInt)
-    daemonAPIs = append(daemonAPIs, daemonAPI)
   }
-  return daemonAPIs
+}
+
+func (daemons *Daemons) loadAPIAllDatas() {
+  for _, daemon := range *daemons {
+    // Get port int from address string
+    portStr := strings.TrimLeft(daemon.Addresses.LocalAddrString, ":")
+    port, err := strconv.Atoi(portStr)
+    if err != nil {
+      log.Fatalf("Error with strconv.Atoi %v", err)
+    }
+    daemon.APIData = loadAPIAllData(port)
+  }
 }
 
 type APIData struct {
@@ -54,8 +65,8 @@ type APIData struct {
   Speeds      *btsync.GetSpeedResponse
 }
 
-func loadAPIAllData(localPort int) APIData {
-  api := btsync.New("", "", localPort, false)
+func loadAPIAllData(localPortInt int) APIData {
+  api := btsync.New("", "", localPortInt, false)
   data := APIData{}
   data.Error = nil
   folders, err := loadAPIFoldersData(api)
@@ -116,10 +127,11 @@ func loadAPIFoldersData(api *btsync.BTSyncAPI) ([]Folder, error) {
 }
 
 func rootHandler(writer http.ResponseWriter, request *http.Request) {
-  daemonAPIs := loadDaemonAPIs()
   tmpl := template.Must(template.ParseFiles("root_view.html"))
-  tmpl.Execute(writer, daemonAPIs)
+  tmpl.Execute(writer, daemons)
 }
+
+var daemons = Daemons{}
 
 func main() {
   // Parse Command line flags
@@ -134,6 +146,19 @@ func main() {
       log.Fatal("Error with ReadConfigFile:", err)
     }
   }
+
+  // Get Daemons from config file
+  allSections := config.GetSections()
+  // TODO: create a less fragile way to remove the "default" section.
+  sects := allSections[1:]
+  sections := &sects
+  loadDaemonsFromConfig(sections)
+
+  // Create Port Forwards
+  daemons.createPortForwards()
+
+  // Load API Datas
+  daemons.loadAPIAllDatas()
 
   // Respond to http resquests
   http.HandleFunc("/config", configViewHandler)

@@ -2,9 +2,9 @@
 
 {{range .}}
   {{if .APIData.Error}}
-    <h2>BTSync Daemon On {{.Name}}, ({{.FQDN}}) has Error {{.APIData.Error}}</h2>
+    <h2>BTSync Daemon On {{.Name}}, ({{.ServerAddrString}}) has Error {{.APIData.Error}}</h2>
   {{else}}
-    <h2>BTSync Daemon On {{.Name}}, ({{.FQDN}}) - {{.APIData.OS.Name}}</h2>
+    <h2>BTSync Daemon On {{.Name}}, ({{.ServerAddrString}}) - {{.APIData.OS.Name}}</h2>
     <div>
       {{with .APIData}}
         {{with .Speeds}}
