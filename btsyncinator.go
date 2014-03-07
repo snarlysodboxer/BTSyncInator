@@ -52,20 +52,20 @@ func loadDaemonsFromConfig(sections *[]string) {
   }
 }
 
-//func setupPortForwards() {
-//  for {
-//    for index, _ := range daemons {
-//      // Create portforward
-//      log.Printf("Making Connection for %s", daemons[index].Name)
-//      sshPortForward.ConnectAndForward(daemons[index].Addresses)
-////      _, err := http.NewRequest("GET", daemons[index].Addresses.LocalAddrString, nil)
-////      if err != nil {
-////        log.Printf("Error with http.NewRequest %v", err)
-////      }
-//    }
-//    time.Sleep(30 * time.Second)
-//  }
-//}
+func setupPortForwards() {
+  for {
+    for index, _ := range daemons {
+      // Create portforward
+      log.Printf("Making Connection for %s", daemons[index].Name)
+      sshPortForward.ConnectAndForward(daemons[index].Addresses)
+//      _, err := http.NewRequest("GET", daemons[index].Addresses.LocalAddrString, nil)
+//      if err != nil {
+//        log.Printf("Error with http.NewRequest %v", err)
+//      }
+    }
+    time.Sleep(30 * time.Second)
+  }
+}
 
 func loadAPIs() {
   for index, _ := range daemons {
@@ -173,8 +173,8 @@ func main() {
   //if err != nil {
   //  log.Fatalf("Error with daemons.setupPortForwards: %v", err)
   //}
-//  go setupPortForwards()
-//  time.Sleep(10 * time.Second)
+  go setupPortForwards()
+  time.Sleep(3 * time.Second)
 
   // Load API Datas
   go loadAPIAllDatas()
