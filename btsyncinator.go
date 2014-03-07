@@ -4,57 +4,31 @@ import (
   "fmt"
   btsync "github.com/vole/btsync-api"
   "log"
+  "net"
   "net/http"
   "html/template"
   "flag"
   "code.google.com/p/goconf/conf"
   "os"
   "github.com/snarlysodboxer/sshPortForward"
-  "strings"
   "strconv"
+  "time"
 )
 
-type Daemons []Daemon
+var daemons []Daemon
 
 type Daemon struct {
-  Name              string
-  Addresses         sshPortForward.Addresses
-  APIData           APIData
+  Name            string
+  Addresses       sshPortForward.Addresses
+  API             *btsync.BTSyncAPI
+  APIData         APIData
 }
 
-func loadDaemonsFromConfig(sections *[]string) {
-  for index, section := range *sections {
-    daemon := Daemon{}
-    daemon.Name                           = section
-    daemon.Addresses.SSHUserString, _     = config.GetString(section, "sshUserString")
-    daemon.Addresses.ServerAddrString, _  = config.GetString(section, "serverAddrString")
-    daemon.Addresses.RemoteAddrString, _  = config.GetString(section, "daemonAddrString")
-    daemon.Addresses.LocalAddrString      = fmt.Sprintf("localhost:%d", 9000 + index)
-    daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
-    daemons = append(daemons, daemon)
-  }
-}
-
-func (daemons *Daemons) createPortForwards() {
-  for _, daemon := range *daemons {
-    // Create portforward
-    err := sshPortForward.ConnectAndForward(daemon.Addresses)
-    if err != nil {
-      log.Fatalf("Error with ConnectAndForward %v", err)
-    }
-  }
-}
-
-func (daemons *Daemons) loadAPIAllDatas() {
-  for _, daemon := range *daemons {
-    // Get port int from address string
-    portStr := strings.TrimLeft(daemon.Addresses.LocalAddrString, ":")
-    port, err := strconv.Atoi(portStr)
-    if err != nil {
-      log.Fatalf("Error with strconv.Atoi %v", err)
-    }
-    daemon.APIData = loadAPIAllData(port)
-  }
+type Folder struct {
+  Folder      btsync.Folder
+  Secrets     *btsync.GetSecretsResponse
+  SyncHosts   *btsync.GetFolderHostsResponse
+  Files       *btsync.GetFilesResponse
 }
 
 type APIData struct {
@@ -65,73 +39,112 @@ type APIData struct {
   Speeds      *btsync.GetSpeedResponse
 }
 
-func loadAPIAllData(localPortInt int) APIData {
-  api := btsync.New("", "", localPortInt, false)
-  data := APIData{}
-  data.Error = nil
-  folders, err := loadAPIFoldersData(api)
-  if err != nil {
-    data.Error = err
+func loadDaemonsFromConfig(sections *[]string) {
+  for index, section := range *sections {
+    daemon := &Daemon{}
+    daemon.Name                           = section
+    daemon.Addresses.SSHUserString, _     = config.GetString(section, "sshUserString")
+    daemon.Addresses.ServerAddrString, _  = config.GetString(section, "serverAddrString")
+    daemon.Addresses.RemoteAddrString, _  = config.GetString(section, "daemonAddrString")
+    daemon.Addresses.LocalAddrString      = fmt.Sprintf("localhost:%d", 9000 + index)
+    daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
+    daemons                              = append(daemons, *daemon)
   }
-  data.Folders = folders
-  // Get the OS:
-  os, err := api.GetOS()
-  if err != nil {
-    data.Error = err
-  }
-  data.OS = os
-  // Get Upload and Download speed
-  speeds, err := api.GetSpeed()
-  if err != nil {
-    data.Error = err
-  }
-  data.Speeds = speeds
-  // Get general Preferences:
-  preferences, err := api.GetPreferences()
-  if err != nil {
-    // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
-    //data.Error = err
-    //fmt.Printf("Error with GetPreferences! %s", err)
-  }
-  data.Preferences = preferences
-  return data
 }
 
-type Folder struct {
-  Folder      btsync.Folder
-  Secrets     *btsync.GetSecretsResponse
-  SyncHosts   *btsync.GetFolderHostsResponse
-  Files       *btsync.GetFilesResponse
+//func (daemons *Daemons) setupPortForwards() {
+//  for {
+//    for _, daemon := range *daemons {
+//      // Create portforward
+//      log.Printf("Making Connection for %s", daemon.Name)
+//      sshPortForward.ConnectAndForward(daemon.Addresses)
+////      _, err := http.NewRequest("GET", daemon.Addresses.LocalAddrString, nil)
+////      if err != nil {
+////        log.Printf("Error with http.NewRequest %v", err)
+////      }
+//    }
+//    time.Sleep(30 * time.Second)
+//  }
+//}
+
+func loadAPIs() {
+  for index, _ := range daemons {
+    // Get port int from address string
+    _, portStr, _ := net.SplitHostPort(daemons[index].Addresses.LocalAddrString)
+    port, err := strconv.Atoi(portStr)
+    if err != nil {
+      log.Fatalf("Error with strconv.Atoi %v", err)
+    }
+    daemons[index].API = btsync.New("", "", port, false)
+  }
 }
 
-func loadAPIFoldersData(api *btsync.BTSyncAPI) ([]Folder, error) {
-  var err error = nil
-  folders, err := api.GetFolders()
-  fldrs := *new([]Folder)
-  for _, folder := range *folders {
-    fldr := &Folder{}
-    fldr.Folder = folder
-    // Get Files for folder:
-    fldr.Files, err = api.GetFilesForPath(folder.Secret, "")
-    // Get Secrets for folder:
-    fldr.Secrets, err = api.GetSecretsForSecret(folder.Secret)
-    // Get Known Hosts for folder:
-    //// TODO: Fix "json: cannot unmarshal object into Go
-    ////     value of type btsync_api.GetFolderHostsResponse" bug
-    ////fldr.SyncHosts, err = api.GetFolderHosts(folder.Secret)
-    fldr.SyncHosts, _ = api.GetFolderHosts(folder.Secret)
-
-    fldrs = append(fldrs, *fldr)
+func loadAPIAllDatas() {
+  for {
+    // Load APIs into each Daemon struct
+    loadAPIs()
+    for index, _ := range daemons {
+      data := APIData{}
+      data.Error = nil
+      // Get the OS:
+      os, err := daemons[index].API.GetOS()
+      if err != nil {
+        data.Error = err
+      }
+      data.OS = os
+      // Get Upload and Download speed
+      speeds, err := daemons[index].API.GetSpeed()
+      if err != nil {
+        data.Error = err
+      }
+      data.Speeds = speeds
+      // Get general Preferences:
+      preferences, err := daemons[index].API.GetPreferences()
+      if err != nil {
+        // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
+        //data.Error = err
+        //fmt.Printf("Error with GetPreferences! %s", err)
+      }
+      data.Preferences = preferences
+      daemons[index].APIData = data
+      // Get All Folders data
+      if daemons[index].APIData.Error != nil {
+        log.Printf("Error loading APIData for %s.", daemons[index].Name)
+      }
+    }
+    loadAPIFoldersDatas()
+    time.Sleep(30 * time.Second)
   }
-  return fldrs, err
+}
+
+func loadAPIFoldersDatas() {
+  for index, _ := range daemons {
+    apiFolders, err := daemons[index].API.GetFolders()
+    folders := []Folder{}
+    for _, apiFolder := range *apiFolders {
+      folder := &Folder{}
+      folder.Folder = apiFolder
+      // Get Files for folder:
+      folder.Files, err = daemons[index].API.GetFilesForPath(apiFolder.Secret, "")
+      // Get Secrets for folder:
+      folder.Secrets, err = daemons[index].API.GetSecretsForSecret(apiFolder.Secret)
+      // Get Known Hosts for folder:
+      //// TODO: Fix "json: cannot unmarshal object into Go
+      ////     value of type btsync_api.GetFolderHostsResponse" bug
+      ////folder.SyncHosts, err = daemons[index].API.GetFolderHosts(apiFolder.Secret)
+      folder.SyncHosts, _ = daemons[index].API.GetFolderHosts(apiFolder.Secret)
+
+      folders = append(folders, *folder)
+    }
+    daemons[index].APIData.Error    = err
+    daemons[index].APIData.Folders  = folders
+  }
 }
 
 func rootHandler(writer http.ResponseWriter, request *http.Request) {
   tmpl := template.Must(template.ParseFiles("root_view.html"))
   tmpl.Execute(writer, daemons)
 }
-
-var daemons = Daemons{}
 
 func main() {
   // Parse Command line flags
@@ -155,10 +168,16 @@ func main() {
   loadDaemonsFromConfig(sections)
 
   // Create Port Forwards
-  daemons.createPortForwards()
+  // TODO: create quitChan
+  //quitChan, err := daemons.setupPortForwards()
+  //if err != nil {
+  //  log.Fatalf("Error with daemons.setupPortForwards: %v", err)
+  //}
+//  go daemons.setupPortForwards()
+//  time.Sleep(10 * time.Second)
 
   // Load API Datas
-  daemons.loadAPIAllDatas()
+  go loadAPIAllDatas()
 
   // Respond to http resquests
   http.HandleFunc("/config", configViewHandler)

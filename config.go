@@ -29,7 +29,7 @@ func configCreateHandler(writer http.ResponseWriter, request *http.Request) {
   if config.AddSection(request.FormValue("Name")) {
     if config.AddOption(request.FormValue("Name"), "sshUserString", request.FormValue("sshUserName")) {
       if config.AddOption(request.FormValue("Name"), "serverAddrString", request.FormValue("serverAddress")) {
-        if config.AddOption(request.FormValue("Name"), "daemonAddrString", request.FormValue("daemonAddress")) {
+        if config.AddOption(request.FormValue("Name"), "remoteAddrString", request.FormValue("remoteAddress")) {
           err := config.WriteConfigFile(*configFilePath, 0600, configHeader)
           if err != nil {
             log.Fatalf("Error with WriteConfigFile: %s", err)
