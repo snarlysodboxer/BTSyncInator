@@ -1,8 +1,10 @@
 <h1>BTSyncInator</h1>
 
 {{range .}}
-  {{if .APIData.Error}}
-    <h2>BTSync Daemon On {{.Name}}, ({{.ServerAddrString}}) has Error {{.APIData.Error}}</h2>
+  {{if not .APIData}}
+    <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has nil APIData</h2>
+  {{else if .APIData.Error}}
+    <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has Error {{.APIData.Error}}</h2>
   {{else}}
     <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) - {{.APIData.OS.Name}}</h2>
     <div>
