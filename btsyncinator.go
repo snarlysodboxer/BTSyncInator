@@ -61,7 +61,6 @@ func setupPortForwards() {
   for {
     for index, _ := range daemons {
       // Create portforward
-      log.Printf("Making Connection for %s", daemons[index].Name)
       sshPortForward.ConnectAndForward(daemons[index].Addresses)
     }
     time.Sleep(30 * time.Second)
@@ -108,11 +107,8 @@ func loadAPIAllDatas() {
       }
       data.Preferences = preferences
       daemons[index].APIData = data
-      // Get All Folders data
-      if daemons[index].APIData.Error != nil {
-        log.Printf("Error loading APIData for %s: %v", daemons[index].Name, daemons[index].APIData.Error)
-      }
     }
+    // Get All Folders data
     loadAPIFoldersDatas()
     time.Sleep(30 * time.Second)
   }
