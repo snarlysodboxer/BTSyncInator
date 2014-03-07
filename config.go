@@ -17,6 +17,8 @@ var (
 )
 
 func configViewHandler(writer http.ResponseWriter, request *http.Request) {
+  daemons = []Daemon{}
+  loadDaemonsFromConfig()
   tmpl, err := template.ParseFiles("config_view.html")
   if err != nil {
     log.Fatalf("Error with ParseFiles! %s", err)
@@ -35,11 +37,11 @@ func configCreateHandler(writer http.ResponseWriter, request *http.Request) {
             log.Fatalf("Error with WriteConfigFile: %s", err)
           }
         }
-        daemons, err := conf.ReadConfigFile(*configFilePath)
+        dmns, err := conf.ReadConfigFile(*configFilePath)
         if err != nil {
           log.Fatalf("Error with ReadConfigFile: %s", err)
         } else {
-          config = daemons
+          config = dmns
           http.Redirect(writer, request, "/config", http.StatusFound)
         }
       }
@@ -53,11 +55,11 @@ func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
     if err != nil {
       log.Fatalf("Error with WriteConfigFile: %s", err)
     }
-    daemons, err := conf.ReadConfigFile(*configFilePath)
+    dmns, err := conf.ReadConfigFile(*configFilePath)
     if err != nil {
       log.Fatalf("Error with ReadConfigFile: %s", err)
     } else {
-      config = daemons
+      config = dmns
       http.Redirect(writer, request, "/config", http.StatusFound)
     }
   } else {

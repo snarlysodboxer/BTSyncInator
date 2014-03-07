@@ -39,7 +39,12 @@ type APIData struct {
   Speeds      *btsync.GetSpeedResponse
 }
 
-func loadDaemonsFromConfig(sections *[]string) {
+func loadDaemonsFromConfig() {
+  // Get Daemons from config file
+  allSections := config.GetSections()
+  // TODO: create a less fragile way to remove the "default" section.
+  sects := allSections[1:]
+  sections := &sects
   for index, section := range *sections {
     daemon := &Daemon{}
     daemon.Name                           = section
@@ -48,7 +53,7 @@ func loadDaemonsFromConfig(sections *[]string) {
     daemon.Addresses.RemoteAddrString, _  = config.GetString(section, "daemonAddrString")
     daemon.Addresses.LocalAddrString      = fmt.Sprintf("localhost:%d", 9000 + index)
     daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
-    daemons                              = append(daemons, *daemon)
+    daemons                               = append(daemons, *daemon)
   }
 }
 
@@ -58,10 +63,6 @@ func setupPortForwards() {
       // Create portforward
       log.Printf("Making Connection for %s", daemons[index].Name)
       sshPortForward.ConnectAndForward(daemons[index].Addresses)
-//      _, err := http.NewRequest("GET", daemons[index].Addresses.LocalAddrString, nil)
-//      if err != nil {
-//        log.Printf("Error with http.NewRequest %v", err)
-//      }
     }
     time.Sleep(30 * time.Second)
   }
@@ -160,12 +161,7 @@ func main() {
     }
   }
 
-  // Get Daemons from config file
-  allSections := config.GetSections()
-  // TODO: create a less fragile way to remove the "default" section.
-  sects := allSections[1:]
-  sections := &sects
-  loadDaemonsFromConfig(sections)
+  loadDaemonsFromConfig()
 
   // Create Port Forwards
   // TODO: create quitChan
