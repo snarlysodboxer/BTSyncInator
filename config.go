@@ -13,7 +13,8 @@ const configHeader = "Configuration file for BTSyncInator:"
 var (
   configFilePath = flag.String("config", ".btsyncinator.conf", "path to config file.")
   privateKeyFilePath = flag.String("private-key", "/home/user/.ssh/id_rsa", "path to private key file.")
-  config = conf.NewConfigFile()
+  debug   = flag.Bool("debug", false, "enable debug mode.")
+  config  = conf.NewConfigFile()
 )
 
 func configViewHandler(writer http.ResponseWriter, request *http.Request) {

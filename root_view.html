@@ -1,47 +1,28 @@
 <h1>BTSyncInator</h1>
 
 {{range .}}
-  {{if not .APIData}}
+  {{if not .APIData.OS.Name}}
     <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has nil APIData</h2>
   {{else if .APIData.Error}}
     <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has Error {{.APIData.Error}}</h2>
   {{else}}
-    <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) - {{.APIData.OS.Name}}</h2>
+    <h2>BTSync Daemon On {{.APIData.OS.Name}} machine {{.Name}}, ({{.Addresses.ServerAddrString}})</h2>
     <div>
       {{with .APIData}}
-        {{with .Speeds}}
-          <ul>
-            <li>{{printf "Download Speed: %d" .Download}}</li>
-            <li>{{printf "Upload Speed: %d" .Upload}}</li>
-          </ul>
-        {{end}}
-        {{with .Preferences}}
-          <ul>
-            <li>{{printf "Device Name: %s" .DeviceName}}</li>
-            <li>{{printf "Disk Low Priority: %t" .DiskLowPriority}}</li>
-            <li>{{printf "Download Limit: %d" .DownloadLimit}}</li>
-            <li>{{printf "Folder Rescan Interval: %d" .FolderRescanInterval}}</li>
-            <li>{{printf "LAN Encrypt Data: %t" .LANEncryptData}}</li>
-            <li>{{printf "LAN Use TCP: %t" .LANUseTCP}}</li>
-            <li>{{printf "Language: %d" .Lang}}</li>
-            <li>{{printf "Listening Port: %d" .ListeningPort}}</li>
-            <li>{{printf "Max File Size Diff For Patching: %d" .MaxFileSizeDiffForPatching}}</li>
-            <li>{{printf "Max File Size For Versioning: %d" .MaxFileSizeForVersioning}}</li>
-            <li>{{printf "Rate Limit Local Peers: %t" .RateLimitLocalPeers}}</li>
-            <li>{{printf "Read Pool Size: %d" .ReadPoolSize}}</li>
-            <li>{{printf "Sync Trash TTL: %d" .SyncTrashTTL}}</li>
-            <li>{{printf "Upload Limit: %d" .UploadLimit}}</li>
-            <li>{{printf "Use UPnP: %d" .UseUPnP}}</li>
-            <li>{{printf "Write Pool Size: %d" .WritePoolSize}}</li>
-          </ul>
-        {{end}}
+        <ul>
+          <li>{{printf "Daemon Read Time: %s" .ReadTime}}</li>
+          {{with .Speeds}}
+            <li>{{printf "Daemon Download Speed: %d" .Download}}</li>
+            <li>{{printf "Daemon Upload Speed: %d" .Upload}}</li>
+          {{end}}
+        </ul>
         {{range .Folders}}
         <h3>
           {{with .Folder}}
-            {{printf "Folder %s" .Dir}}
+            {{printf "Share %s" .Dir}}
             {{printf "is %d Bytes," .Size}}
             {{printf "and is %s." .Type}}
-            {{printf "It has %d files," .Files}}
+            {{printf "It has %d files and folders," .Files}}
             {{printf "an error code of %d," .Error}}
             {{printf "and has an indexing status of %b." .Indexing}}
           {{end}}
@@ -55,19 +36,6 @@
           <li>Only syncs with:</li>
           {{range .SyncHosts}}
             <li>{{printf "%s" .}}</li>
-          {{end}}
-        </ul>
-        <ul>
-          {{range .Files}}
-            <li>
-            {{printf "File %s" .Name}}
-            {{printf "has %d pieces," .HavePieces}}
-            {{printf "out of %d," .TotalPieces}}
-            {{printf "is %d bytes," .Size}}
-            {{printf "has a status of %s," .State}}
-            {{printf "is a %s," .Type}}
-            {{printf "and has a download status of %d." .Download}}
-            </li>
           {{end}}
         </ul>
         {{end}}
