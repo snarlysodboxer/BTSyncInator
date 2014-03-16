@@ -1,6 +1,7 @@
 <h1>BTSyncInator</h1>
 
 {{range .}}
+  {{ $daemonName := .Name }}
   {{if not .APIData.OS.Name}}
     <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has nil APIData</h2>
   {{else if .APIData.Error}}
@@ -18,14 +19,19 @@
         </ul>
         {{range .Folders}}
         <h4>
-          {{with .Folder}}
-            {{printf "Share %s" .Dir}}
-            {{printf "is %d Bytes," .Size}}
-            {{printf "and is %s." .Type}}
-            {{printf "It has %d files and folders," .Files}}
-            {{printf "an error code of %d," .Error}}
-            {{printf "and has an indexing status of %b." .Indexing}}
-          {{end}}
+          <form action="/folder/remove" method="POST">
+            {{with .Folder}}
+              {{printf "Synced directory %s" .Dir}}
+              {{printf "is %d Bytes," .Size}}
+              {{printf "and is %s." .Type}}
+              {{printf "It has %d files and folders," .Files}}
+              {{printf "an error code of %d," .Error}}
+              {{printf "and has an indexing status of %b." .Indexing}}
+            {{end}}
+            <input type="hidden" name="DaemonName" value='{{$daemonName}}'>
+            <input type="hidden" name="RemoveSecret" value='{{.Secrets.ReadWrite}}'>
+            <input type="submit" value="Remove this Sync">
+          </form>
         </h4>
         <ul>
           {{with .Secrets}}

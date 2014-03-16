@@ -18,6 +18,8 @@ import (
 var daemons []Daemon
 
 type Daemon struct {
+  // Using Name as unique identifier
+  // TODO: enforce unique Daemon Names in config.
   Name            string
   Addresses       sshPortForward.Addresses
   API             *btsync.BTSyncAPI
@@ -153,6 +155,22 @@ func rootHandler(writer http.ResponseWriter, request *http.Request) {
   tmpl.Execute(writer, daemons)
 }
 
+func folderRemoveHandler(writer http.ResponseWriter, request *http.Request) {
+  for index, _ := range daemons {
+    if request.FormValue("DaemonName") == daemons[index].Name {
+      //response, err := daemons[index].API.RemoveFolder(request.FormValue("RemoveSecret"))
+      _, err := daemons[index].API.RemoveFolder(request.FormValue("RemoveSecret"))
+      if err != nil {
+        if *debug { log.Printf("Error: %v", err) }
+      } else {
+        daemons = []Daemon{}
+        loadDaemonsFromConfig()
+        http.Redirect(writer, request, "/", http.StatusFound)
+      }
+    }
+  }
+}
+
 func main() {
   // Parse Command line flags
   flag.Parse()
@@ -183,5 +201,6 @@ func main() {
   http.HandleFunc("/config/delete", configDeleteHandler)
   http.HandleFunc("/config/create", configCreateHandler)
   http.HandleFunc("/", rootHandler)
+  http.HandleFunc("/folder/remove", folderRemoveHandler)
   http.ListenAndServe("localhost:10000", nil)
 }

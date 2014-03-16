@@ -20,3 +20,5 @@ BTSyncInator
     sshuserstring=username
     serveraddrstring=example2.server.com:60
     daemonaddrstring=localhost:9999
+
+Note: reference names for each daemon must be unique.
