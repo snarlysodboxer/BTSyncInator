@@ -65,7 +65,7 @@ func setupPortForwards() {
     for index, _ := range daemons {
       // Create portforward
       if daemons[index].Forwarded == false {
-        if *debug == true { log.Printf("daemon addresses: %s", daemons[index].Addresses) }
+        if *debug { log.Printf("daemon addresses: %s", daemons[index].Addresses) }
         go sshPortForward.ConnectAndForward(daemons[index].Addresses)
         daemons[index].Forwarded = true
       }
@@ -99,22 +99,23 @@ func loadAPIAllDatas() {
 
       // Get the OS:
       data.OS, data.Error = daemons[index].API.GetOS()
-      if *debug == true && data.Error != nil { log.Printf("Error: %v", data.Error) }
+      if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
       // Get Upload and Download speed
       data.Speeds, data.Error = daemons[index].API.GetSpeed()
-      if *debug == true && data.Error != nil { log.Printf("Error: %v", data.Error) }
+      if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
       // Get general Preferences:
       // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
       data.Preferences, _ = daemons[index].API.GetPreferences()
       //data.Preferences, data.Error := daemons[index].API.GetPreferences()
-      //if *debug == true && data.Error != nil { log.Printf("Error: %v", data.Error) }
+      //if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
       daemons[index].APIData = data
     }
     // Get All Folders data
     loadAPIFoldersDatas()
+    //if *debug { log.Printf("the daemons: %v", daemons) }
     time.Sleep(30 * time.Second)
   }
 }
@@ -122,23 +123,23 @@ func loadAPIAllDatas() {
 func loadAPIFoldersDatas() {
   for index, _ := range daemons {
     apiFolders, err := daemons[index].API.GetFolders()
-    if *debug == true && err != nil { log.Printf("Error: %v", err) }
+    if *debug && err != nil { log.Printf("Error: %v", err) }
     folders := []Folder{}
     for _, apiFolder := range *apiFolders {
       folder := &Folder{}
       folder.Folder = apiFolder
       // Get Files for folder:
       folder.Files, err = daemons[index].API.GetFilesForPath(apiFolder.Secret, "")
-      if *debug == true && err != nil { log.Printf("Error: %v", err) }
+      if *debug && err != nil { log.Printf("Error: %v", err) }
       // Get Secrets for folder:
       folder.Secrets, err = daemons[index].API.GetSecretsForSecret(apiFolder.Secret)
-      if *debug == true && err != nil { log.Printf("Error: %v", err) }
+      if *debug && err != nil { log.Printf("Error: %v", err) }
       // Get Known Hosts for folder:
       //// TODO: Fix "json: cannot unmarshal object into Go
       ////     value of type btsync_api.GetFolderHostsResponse" bug
       ////folder.SyncHosts, err = daemons[index].API.GetFolderHosts(apiFolder.Secret)
       folder.SyncHosts, _ = daemons[index].API.GetFolderHosts(apiFolder.Secret)
-      if *debug == true && err != nil { log.Printf("Error: %v", err) }
+      if *debug && err != nil { log.Printf("Error: %v", err) }
 
       folders = append(folders, *folder)
     }
@@ -155,7 +156,7 @@ func rootHandler(writer http.ResponseWriter, request *http.Request) {
 func main() {
   // Parse Command line flags
   flag.Parse()
-  if *debug == true { log.Println("Debug mode enabled") }
+  if *debug { log.Println("Debug mode enabled") }
 
   // Load or create config file
   if _, err := os.Stat(*configFilePath); os.IsNotExist(err) {

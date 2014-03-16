@@ -17,7 +17,7 @@
           {{end}}
         </ul>
         {{range .Folders}}
-        <h3>
+        <h4>
           {{with .Folder}}
             {{printf "Share %s" .Dir}}
             {{printf "is %d Bytes," .Size}}
@@ -26,7 +26,7 @@
             {{printf "an error code of %d," .Error}}
             {{printf "and has an indexing status of %b." .Indexing}}
           {{end}}
-        </h3>
+        </h4>
         <ul>
           {{with .Secrets}}
             <li>{{printf "RW Secret: %s" .ReadWrite}}</li>
