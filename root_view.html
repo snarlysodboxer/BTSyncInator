@@ -17,6 +17,17 @@
             <li>{{printf "Daemon Upload Speed: %d" .Upload}}</li>
           {{end}}
         </ul>
+        <form action="/folder/add/new" method="POST">
+          <input type="hidden" name="DaemonName" value='{{$daemonName}}'>
+          <textarea name="FullPath" rows="1" cols="30">{{printf "%s" "/full/path"}}</textarea>
+          <input type="submit" value="Add a folder to Sync (generate new Secrets)">
+        </form>
+        <form action="/folder/add/existing" method="POST">
+          <input type="hidden" name="DaemonName" value='{{$daemonName}}'>
+          <textarea name="FullPath" rows="1" cols="30">{{printf "%s" "/full/path"}}</textarea>
+          <textarea name="Secret" rows="1" cols="35">{{printf "%s" "ReadWrite or ReadOnly Secret"}}</textarea>
+          <input type="submit" value="Add a folder to Sync (with existing Secret)">
+        </form>
         {{range .Folders}}
         <h4>
           <form action="/folder/remove" method="POST">

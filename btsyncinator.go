@@ -15,7 +15,10 @@ import (
   "time"
 )
 
-var daemons []Daemon
+var (
+  daemons             []Daemon
+  loadAPIAllDatasChan = make(chan bool, 1)
+)
 
 type Daemon struct {
   // Using Name as unique identifier
@@ -84,41 +87,51 @@ func loadAPIs() {
     if err != nil {
       log.Fatalf("Error with strconv.Atoi %v", err)
     }
-    daemons[index].API = btsync.New("", "", port, false)
+    daemons[index].API = btsync.New("", "", port, *debug)
+  }
+}
+
+func loadAPIAllDatasEveryXSeconds(seconds time.Duration) {
+  for {
+    loadAPIAllDatasChan <- true
+    time.Sleep(seconds)
   }
 }
 
 func loadAPIAllDatas() {
   for {
-    // Load APIs into each Daemon struct
-    loadAPIs()
-    for index, _ := range daemons {
-      data := APIData{}
-      data.Error = nil
+    select {
+    case <- loadAPIAllDatasChan:
+      // Load APIs into each Daemon struct
+      loadAPIs()
+      for index, _ := range daemons {
+        data := APIData{}
+        data.Error = nil
 
-      // Get the read time:
-      data.ReadTime = time.Now().String()
+        // Get the read time:
+        data.ReadTime = time.Now().String()
 
-      // Get the OS:
-      data.OS, data.Error = daemons[index].API.GetOS()
-      if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
+        // Get the OS:
+        data.OS, data.Error = daemons[index].API.GetOS()
+        if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
-      // Get Upload and Download speed
-      data.Speeds, data.Error = daemons[index].API.GetSpeed()
-      if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
+        // Get Upload and Download speed
+        data.Speeds, data.Error = daemons[index].API.GetSpeed()
+        if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
-      // Get general Preferences:
-      // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
-      data.Preferences, _ = daemons[index].API.GetPreferences()
-      //data.Preferences, data.Error := daemons[index].API.GetPreferences()
-      //if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
+        // Get general Preferences:
+        // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
+        data.Preferences, _ = daemons[index].API.GetPreferences()
+        //data.Preferences, data.Error := daemons[index].API.GetPreferences()
+        //if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
-      daemons[index].APIData = data
+        daemons[index].APIData = data
+      }
+      // Get All Folders data
+      loadAPIFoldersDatas()
+      //if *debug { log.Printf("the daemons: %v", daemons) }
+    default:
     }
-    // Get All Folders data
-    loadAPIFoldersDatas()
-    //if *debug { log.Printf("the daemons: %v", daemons) }
-    time.Sleep(30 * time.Second)
   }
 }
 
@@ -155,16 +168,45 @@ func rootHandler(writer http.ResponseWriter, request *http.Request) {
   tmpl.Execute(writer, daemons)
 }
 
+func folderAddNewHandler(writer http.ResponseWriter, request *http.Request) {
+  for index, _ := range daemons {
+    if request.FormValue("DaemonName") == daemons[index].Name {
+      _, err := daemons[index].API.AddFolder(request.FormValue("FullPath"))
+      if err != nil {
+        if *debug {log.Printf("Error with API.AddFolder: %v", err)}
+      } else {
+        time.Sleep(3 * time.Second)
+        loadAPIAllDatasChan <- true
+        http.Redirect(writer, request, "/", http.StatusFound)
+      }
+    }
+  }
+}
+
+func folderAddExistingHandler(writer http.ResponseWriter, request *http.Request) {
+  for index, _ := range daemons {
+    if request.FormValue("DaemonName") == daemons[index].Name {
+      _, err := daemons[index].API.AddFolderWithSecret(request.FormValue("FullPath"), request.FormValue("Secret"))
+      if err != nil {
+        if *debug {log.Printf("Error with API.AddFolderWithSecret: %v", err)}
+      } else {
+        time.Sleep(3 * time.Second)
+        loadAPIAllDatasChan <- true
+        http.Redirect(writer, request, "/", http.StatusFound)
+      }
+    }
+  }
+}
+
 func folderRemoveHandler(writer http.ResponseWriter, request *http.Request) {
   for index, _ := range daemons {
     if request.FormValue("DaemonName") == daemons[index].Name {
-      //response, err := daemons[index].API.RemoveFolder(request.FormValue("RemoveSecret"))
       _, err := daemons[index].API.RemoveFolder(request.FormValue("RemoveSecret"))
       if err != nil {
         if *debug { log.Printf("Error: %v", err) }
       } else {
-        daemons = []Daemon{}
-        loadDaemonsFromConfig()
+        time.Sleep(3 * time.Second)
+        loadAPIAllDatasChan <- true
         http.Redirect(writer, request, "/", http.StatusFound)
       }
     }
@@ -195,12 +237,20 @@ func main() {
 
   // Load API Datas
   go loadAPIAllDatas()
+  seconds, err := time.ParseDuration("30s")
+  if *debug {log.Printf("ParseDuration: %d", seconds)}
+  if err != nil {
+    if *debug {log.Printf("Error with time.ParseDuration: %v", err)}
+  }
+  go loadAPIAllDatasEveryXSeconds(seconds)
 
   // Respond to http resquests
-  http.HandleFunc("/config", configViewHandler)
-  http.HandleFunc("/config/delete", configDeleteHandler)
-  http.HandleFunc("/config/create", configCreateHandler)
-  http.HandleFunc("/", rootHandler)
-  http.HandleFunc("/folder/remove", folderRemoveHandler)
+  http.HandleFunc("/config",              configViewHandler)
+  http.HandleFunc("/config/delete",       configDeleteHandler)
+  http.HandleFunc("/config/create",       configCreateHandler)
+  http.HandleFunc("/folder/add/new",      folderAddNewHandler)
+  http.HandleFunc("/folder/add/existing", folderAddExistingHandler)
+  http.HandleFunc("/folder/remove",       folderRemoveHandler)
+  http.HandleFunc("/",                    rootHandler)
   http.ListenAndServe("localhost:10000", nil)
 }
