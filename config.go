@@ -9,20 +9,19 @@ import (
 	"log"
 	"net/http"
 	"os"
-	//"time"
 )
 
 const configHeader = "Configuration file for BTSyncInator:"
 
 var (
-	configFilePath     = flag.String("config", ".btsyncinator.conf", "path to config file.")
-	privateKeyFilePath = flag.String("private-key", "/home/user/.ssh/id_rsa", "path to private key file.")
-	debug              = flag.Bool("debug", false, "enable debug mode.")
-	apiDebug           = flag.Bool("apiDebug", false, "enable debug mode on btsync-api library.")
-	config             = conf.NewConfigFile()
+	configFilePath = flag.String("config", ".btsyncinator.conf", "path to config file.")
+	debug          = flag.Bool("debug", false, "enable debug mode.")
+	apiDebug       = flag.Bool("apiDebug", false, "enable debug mode on btsync-api library.")
+	config         = conf.NewConfigFile()
+	settings       = Settings{}
 )
 
-func readSlashCreateConfig() *conf.ConfigFile {
+func readSlashCreateConfig() {
 	if _, err := os.Stat(*configFilePath); os.IsNotExist(err) {
 		config.WriteConfigFile(*configFilePath, 0600, configHeader)
 	} else {
@@ -31,7 +30,16 @@ func readSlashCreateConfig() *conf.ConfigFile {
 			log.Fatal("Error with ReadConfigFile:", err)
 		}
 	}
-	return config
+}
+
+func loadConfigSettings() {
+	readSlashCreateConfig()
+	// Get general settings from default section of config file
+	privateKeyFilePath, err := config.GetString("default", "privatekeyfilepath")
+	if err != nil {
+		log.Fatalf("Error with config.GetString: %s", err)
+	}
+	settings.PrivateKeyFilePath = privateKeyFilePath
 }
 
 func setupDaemonsFromConfig() {
@@ -40,9 +48,9 @@ func setupDaemonsFromConfig() {
 	if *debug {
 		log.Printf("oldDaemons: %v", oldDaemons)
 	}
-	// Get Daemons from config file
-	config := readSlashCreateConfig()
+	readSlashCreateConfig()
 	allSections := config.GetSections()
+	// Get Daemons from config file
 	sects := allSections[1:]
 	sections := &sects
 	daemons = []Daemon{}
@@ -53,7 +61,7 @@ func setupDaemonsFromConfig() {
 		daemon.Addresses.ServerAddrString, _ = config.GetString(section, "serverAddrString")
 		daemon.Addresses.RemoteAddrString, _ = config.GetString(section, "daemonAddrString")
 		daemon.Addresses.LocalAddrString = fmt.Sprintf("localhost:%d", 9000+sectionIndex)
-		daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
+		daemon.Addresses.PrivateKeyPathString = settings.PrivateKeyFilePath
 		daemons = append(daemons, *daemon)
 		// Setup portforward
 		if len(oldDaemons) != 0 {
@@ -87,7 +95,7 @@ func configViewHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func configCreateHandler(writer http.ResponseWriter, request *http.Request) {
-	config := readSlashCreateConfig()
+	readSlashCreateConfig()
 	// AddSection and AddOption return boolean
 	if config.AddSection(request.FormValue("Name")) {
 		if config.AddOption(request.FormValue("Name"), "sshUserString", request.FormValue("sshUserName")) {
@@ -112,7 +120,7 @@ func configCreateHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
-	config := readSlashCreateConfig()
+	readSlashCreateConfig()
 	if config.RemoveSection(request.FormValue("DeleteName")) {
 		err := config.WriteConfigFile(*configFilePath, 0600, configHeader)
 		if err != nil {

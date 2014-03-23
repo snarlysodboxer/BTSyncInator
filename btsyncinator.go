@@ -16,6 +16,10 @@ var (
 	daemons []Daemon
 )
 
+type Settings struct {
+	PrivateKeyFilePath string
+}
+
 type Daemon struct {
 	// Using Name as unique identifier
 	// TODO: enforce unique Daemon Names in config.
@@ -185,6 +189,8 @@ func main() {
 	if *debug {
 		log.Println("Debug mode enabled")
 	}
+
+	loadConfigSettings()
 
 	setupDaemonsFromConfig()
 
