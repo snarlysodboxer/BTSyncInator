@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	daemons             []Daemon
+	daemons []Daemon
 )
 
 type Daemon struct {
@@ -55,38 +55,38 @@ func loadAPIs() {
 }
 
 func loadAPIAllDatas() {
-  // Load APIs into each Daemon struct
-  loadAPIs()
-  for index, _ := range daemons {
-    data := APIData{}
-    data.Error = nil
+	// Load APIs into each Daemon struct
+	loadAPIs()
+	for index, _ := range daemons {
+		data := APIData{}
+		data.Error = nil
 
-    // Get the read time:
-    data.ReadTime = time.Now().String()
+		// Get the read time:
+		data.ReadTime = time.Now().String()
 
-    // Get the OS:
-    data.OS, data.Error = daemons[index].API.GetOS()
-    if *debug && data.Error != nil {
-      log.Printf("Error: %v", data.Error)
-    }
+		// Get the OS:
+		data.OS, data.Error = daemons[index].API.GetOS()
+		if *debug && data.Error != nil {
+			log.Printf("Error: %v", data.Error)
+		}
 
-    // Get Upload and Download speed
-    data.Speeds, data.Error = daemons[index].API.GetSpeed()
-    if *debug && data.Error != nil {
-      log.Printf("Error: %v", data.Error)
-    }
+		// Get Upload and Download speed
+		data.Speeds, data.Error = daemons[index].API.GetSpeed()
+		if *debug && data.Error != nil {
+			log.Printf("Error: %v", data.Error)
+		}
 
-    // Get general Preferences:
-    // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
-    data.Preferences, _ = daemons[index].API.GetPreferences()
-    //data.Preferences, data.Error := daemons[index].API.GetPreferences()
-    //if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
+		// Get general Preferences:
+		// TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
+		data.Preferences, _ = daemons[index].API.GetPreferences()
+		//data.Preferences, data.Error := daemons[index].API.GetPreferences()
+		//if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
-    daemons[index].APIData = data
-  }
-  // Get All Folders data
-  loadAPIFoldersDatas()
-  //if *debug { log.Printf("the daemons: %v", daemons) }
+		daemons[index].APIData = data
+	}
+	// Get All Folders data
+	loadAPIFoldersDatas()
+	//if *debug { log.Printf("the daemons: %v", daemons) }
 }
 
 func loadAPIFoldersDatas() {
@@ -126,7 +126,7 @@ func loadAPIFoldersDatas() {
 }
 
 func rootHandler(writer http.ResponseWriter, request *http.Request) {
-  loadAPIAllDatas()
+	loadAPIAllDatas()
 	tmpl := template.Must(template.ParseFiles("root_view.html"))
 	tmpl.Execute(writer, daemons)
 }
@@ -188,7 +188,7 @@ func main() {
 
 	setupDaemonsFromConfig()
 
-  loadAPIAllDatas()
+	loadAPIAllDatas()
 
 	// Respond to http resquests
 	http.HandleFunc("/config", configViewHandler)

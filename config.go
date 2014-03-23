@@ -35,17 +35,17 @@ func readSlashCreateConfig() *conf.ConfigFile {
 }
 
 func setupDaemonsFromConfig() {
-  // copy old Daemons
-  oldDaemons := daemons
-  if *debug {
-    log.Printf("oldDaemons: %v", oldDaemons)
-  }
+	// copy old Daemons
+	oldDaemons := daemons
+	if *debug {
+		log.Printf("oldDaemons: %v", oldDaemons)
+	}
 	// Get Daemons from config file
 	config := readSlashCreateConfig()
 	allSections := config.GetSections()
 	sects := allSections[1:]
 	sections := &sects
-  daemons = []Daemon{}
+	daemons = []Daemon{}
 	for sectionIndex, section := range *sections {
 		daemon := &Daemon{}
 		daemon.Name = section
@@ -55,26 +55,26 @@ func setupDaemonsFromConfig() {
 		daemon.Addresses.LocalAddrString = fmt.Sprintf("localhost:%d", 9000+sectionIndex)
 		daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
 		daemons = append(daemons, *daemon)
-    // Setup portforward
-    if len(oldDaemons) != 0 {
-      for oldIndex, _ := range oldDaemons {
-        if *debug {
-          log.Printf("oldDaemons: %v", oldDaemons[oldIndex].Addresses)
-        }
-        if oldDaemons[oldIndex].Name == daemon.Name {
-          if oldDaemons[oldIndex].Forwarded == false {
-            go sshPortForward.ConnectAndForward(daemons[sectionIndex].Addresses)
-          }
-          daemons[sectionIndex].Forwarded = true
-        }
-      }
-    } else {
-      if *debug {
-        log.Println(sectionIndex, daemons[sectionIndex])
-      }
-      go sshPortForward.ConnectAndForward(daemons[sectionIndex].Addresses)
-      daemons[sectionIndex].Forwarded = true
-    }
+		// Setup portforward
+		if len(oldDaemons) != 0 {
+			for oldIndex, _ := range oldDaemons {
+				if *debug {
+					log.Printf("oldDaemons: %v", oldDaemons[oldIndex].Addresses)
+				}
+				if oldDaemons[oldIndex].Name == daemon.Name {
+					if oldDaemons[oldIndex].Forwarded == false {
+						go sshPortForward.ConnectAndForward(daemons[sectionIndex].Addresses)
+					}
+					daemons[sectionIndex].Forwarded = true
+				}
+			}
+		} else {
+			if *debug {
+				log.Println(sectionIndex, daemons[sectionIndex])
+			}
+			go sshPortForward.ConnectAndForward(daemons[sectionIndex].Addresses)
+			daemons[sectionIndex].Forwarded = true
+		}
 	}
 }
 
@@ -103,7 +103,7 @@ func configCreateHandler(writer http.ResponseWriter, request *http.Request) {
 					log.Fatalf("Error with ReadConfigFile: %s", err)
 				} else {
 					config = dmns
-          setupDaemonsFromConfig()
+					setupDaemonsFromConfig()
 					http.Redirect(writer, request, "/config", http.StatusFound)
 				}
 			}
@@ -123,7 +123,7 @@ func configDeleteHandler(writer http.ResponseWriter, request *http.Request) {
 			log.Fatalf("Error with ReadConfigFile: %s", err)
 		} else {
 			config = dmns
-      setupDaemonsFromConfig()
+			setupDaemonsFromConfig()
 			http.Redirect(writer, request, "/config", http.StatusFound)
 		}
 	} else {
