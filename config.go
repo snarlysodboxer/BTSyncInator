@@ -40,6 +40,11 @@ func loadConfigSettings() {
 		log.Fatalf("Error with config.GetString: %s", err)
 	}
 	settings.PrivateKeyFilePath = privateKeyFilePath
+	serveAddress, err := config.GetString("default", "serveaddress")
+	if err != nil {
+		log.Fatalf("Error with config.GetString: %s", err)
+	}
+	settings.ServeAddress = serveAddress
 }
 
 func setupDaemonsFromConfig() {

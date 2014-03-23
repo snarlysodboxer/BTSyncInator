@@ -18,6 +18,7 @@ var (
 
 type Settings struct {
 	PrivateKeyFilePath string
+  ServeAddress       string
 }
 
 type Daemon struct {
@@ -204,5 +205,5 @@ func main() {
 	http.HandleFunc("/folder/add/existing", folderAddExistingHandler)
 	http.HandleFunc("/folder/remove", folderRemoveHandler)
 	http.HandleFunc("/", rootHandler)
-	http.ListenAndServe("localhost:10000", nil)
+	http.ListenAndServe(settings.ServeAddress, nil)
 }

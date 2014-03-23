@@ -11,6 +11,12 @@ BTSyncInator
 
 ###Example config file:
     # Configuration file for BTSyncInator:
+    # The "default" section is for general options,
+    # the other sections each represent a running BTSync daemon.
+    [default]
+    privatekeyfilepath=/home/user/.ssh/id_rsa
+    serveaddress=localhost:10000
+
     [btsync-tester]
     sshuserstring=root
     serveraddrstring=example.server.com:22
