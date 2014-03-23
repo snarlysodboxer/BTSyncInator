@@ -1,23 +1,19 @@
 package main
 
 import (
-	"code.google.com/p/goconf/conf"
 	"flag"
-	"fmt"
 	"github.com/snarlysodboxer/sshPortForward"
 	btsync "github.com/vole/btsync-api"
 	"html/template"
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
 
 var (
 	daemons             []Daemon
-	loadAPIAllDatasChan = make(chan bool, 1)
 )
 
 type Daemon struct {
@@ -46,41 +42,6 @@ type APIData struct {
 	ReadTime    string
 }
 
-func loadDaemonsFromConfig() {
-	// Get Daemons from config file
-	allSections := config.GetSections()
-	// TODO: create a less fragile way to remove the "default" section.
-	sects := allSections[1:]
-	sections := &sects
-	for index, section := range *sections {
-		daemon := &Daemon{}
-		daemon.Name = section
-		daemon.Forwarded = false
-		daemon.Addresses.SSHUserString, _ = config.GetString(section, "sshUserString")
-		daemon.Addresses.ServerAddrString, _ = config.GetString(section, "serverAddrString")
-		daemon.Addresses.RemoteAddrString, _ = config.GetString(section, "daemonAddrString")
-		daemon.Addresses.LocalAddrString = fmt.Sprintf("localhost:%d", 9000+index)
-		daemon.Addresses.PrivateKeyPathString = *privateKeyFilePath
-		daemons = append(daemons, *daemon)
-	}
-}
-
-func setupPortForwards() {
-	for {
-		for index, _ := range daemons {
-			if daemons[index].Forwarded == false {
-				if *debug {
-					log.Printf("daemon addresses: %s", daemons[index].Addresses)
-				}
-				// Create portforward
-				go sshPortForward.ConnectAndForward(daemons[index].Addresses)
-				daemons[index].Forwarded = true
-			}
-		}
-		time.Sleep(30 * time.Second)
-	}
-}
-
 func loadAPIs() {
 	for index, _ := range daemons {
 		// Get port int from address string
@@ -89,56 +50,43 @@ func loadAPIs() {
 		if err != nil {
 			log.Fatalf("Error with strconv.Atoi %v", err)
 		}
-		daemons[index].API = btsync.New("", "", port, *debug)
-	}
-}
-
-func loadAPIAllDatasEveryXSeconds(seconds time.Duration) {
-	for {
-		loadAPIAllDatasChan <- true
-		time.Sleep(seconds)
+		daemons[index].API = btsync.New("", "", port, *apiDebug)
 	}
 }
 
 func loadAPIAllDatas() {
-	for {
-		select {
-		case <-loadAPIAllDatasChan:
-			// Load APIs into each Daemon struct
-			loadAPIs()
-			for index, _ := range daemons {
-				data := APIData{}
-				data.Error = nil
+  // Load APIs into each Daemon struct
+  loadAPIs()
+  for index, _ := range daemons {
+    data := APIData{}
+    data.Error = nil
 
-				// Get the read time:
-				data.ReadTime = time.Now().String()
+    // Get the read time:
+    data.ReadTime = time.Now().String()
 
-				// Get the OS:
-				data.OS, data.Error = daemons[index].API.GetOS()
-				if *debug && data.Error != nil {
-					log.Printf("Error: %v", data.Error)
-				}
+    // Get the OS:
+    data.OS, data.Error = daemons[index].API.GetOS()
+    if *debug && data.Error != nil {
+      log.Printf("Error: %v", data.Error)
+    }
 
-				// Get Upload and Download speed
-				data.Speeds, data.Error = daemons[index].API.GetSpeed()
-				if *debug && data.Error != nil {
-					log.Printf("Error: %v", data.Error)
-				}
+    // Get Upload and Download speed
+    data.Speeds, data.Error = daemons[index].API.GetSpeed()
+    if *debug && data.Error != nil {
+      log.Printf("Error: %v", data.Error)
+    }
 
-				// Get general Preferences:
-				// TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
-				data.Preferences, _ = daemons[index].API.GetPreferences()
-				//data.Preferences, data.Error := daemons[index].API.GetPreferences()
-				//if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
+    // Get general Preferences:
+    // TODO: Fix "json: cannot unmarshal number into Go value of type bool" bug
+    data.Preferences, _ = daemons[index].API.GetPreferences()
+    //data.Preferences, data.Error := daemons[index].API.GetPreferences()
+    //if *debug && data.Error != nil { log.Printf("Error: %v", data.Error) }
 
-				daemons[index].APIData = data
-			}
-			// Get All Folders data
-			loadAPIFoldersDatas()
-			//if *debug { log.Printf("the daemons: %v", daemons) }
-		default:
-		}
-	}
+    daemons[index].APIData = data
+  }
+  // Get All Folders data
+  loadAPIFoldersDatas()
+  //if *debug { log.Printf("the daemons: %v", daemons) }
 }
 
 func loadAPIFoldersDatas() {
@@ -178,6 +126,7 @@ func loadAPIFoldersDatas() {
 }
 
 func rootHandler(writer http.ResponseWriter, request *http.Request) {
+  loadAPIAllDatas()
 	tmpl := template.Must(template.ParseFiles("root_view.html"))
 	tmpl.Execute(writer, daemons)
 }
@@ -192,7 +141,6 @@ func folderAddNewHandler(writer http.ResponseWriter, request *http.Request) {
 				}
 			} else {
 				time.Sleep(3 * time.Second)
-				loadAPIAllDatasChan <- true
 				http.Redirect(writer, request, "/", http.StatusFound)
 			}
 		}
@@ -209,7 +157,6 @@ func folderAddExistingHandler(writer http.ResponseWriter, request *http.Request)
 				}
 			} else {
 				time.Sleep(3 * time.Second)
-				loadAPIAllDatasChan <- true
 				http.Redirect(writer, request, "/", http.StatusFound)
 			}
 		}
@@ -226,7 +173,6 @@ func folderRemoveHandler(writer http.ResponseWriter, request *http.Request) {
 				}
 			} else {
 				time.Sleep(3 * time.Second)
-				loadAPIAllDatasChan <- true
 				http.Redirect(writer, request, "/", http.StatusFound)
 			}
 		}
@@ -240,35 +186,9 @@ func main() {
 		log.Println("Debug mode enabled")
 	}
 
-	// Load or create config file
-	if _, err := os.Stat(*configFilePath); os.IsNotExist(err) {
-		config.WriteConfigFile(*configFilePath, 0600, configHeader)
-	} else {
-		config, err = conf.ReadConfigFile(*configFilePath)
-		if err != nil {
-			log.Fatal("Error with ReadConfigFile:", err)
-		}
-	}
+	setupDaemonsFromConfig()
 
-	loadDaemonsFromConfig()
-
-	// Create Port Forwards
-	// TODO: create quitChan
-	go setupPortForwards()
-	time.Sleep(3 * time.Second)
-
-	// Load API Datas
-	go loadAPIAllDatas()
-	seconds, err := time.ParseDuration("30s")
-	if *debug {
-		log.Printf("ParseDuration: %d", seconds)
-	}
-	if err != nil {
-		if *debug {
-			log.Printf("Error with time.ParseDuration: %v", err)
-		}
-	}
-	go loadAPIAllDatasEveryXSeconds(seconds)
+  loadAPIAllDatas()
 
 	// Respond to http resquests
 	http.HandleFunc("/config", configViewHandler)
