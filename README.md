@@ -4,7 +4,7 @@ BTSyncInator
 ##Multiple BitTorrent Sync Daemon Manager.
 
 ###Usage:
-    btsyncinator [--config path/to/config.file] [--private-key path/to/privatekey] [--debug]
+    btsyncinator [--config path/to/config.file] [--debug]
 
 ###Example:
     btsyncinator --config .btsyncinator.conf
