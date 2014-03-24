@@ -100,9 +100,11 @@ func loadSettings() {
     }
   } else if settings.TLSKeyPath == "" && settings.TLSCertPath == "" {
     if *debug {
-      log.Println("Use TLS set to true, but TLS key path and/or cert path not set, not using HTTPS")
+      log.Println("Use TLS set to true, but TLS key path and/or cert path not set, generating self-signed cert.")
     }
-    useTLS = false
+    genCACert("btsyncinator", 4)
+    settings.TLSKeyPath = "btsyncinator.key"
+    settings.TLSCertPath = "btsyncinator.crt"
   } else {
     if *debug {
       log.Println("Use TLS set to true.")
