@@ -16,11 +16,6 @@ var (
 	daemons []Daemon
 )
 
-type Settings struct {
-	PrivateKeyFilePath string
-  ServeAddress       string
-}
-
 type Daemon struct {
 	// Using Name as unique identifier
 	// TODO: enforce unique Daemon Names in config.
@@ -194,8 +189,6 @@ func main() {
 	loadConfigSettings()
 
 	setupDaemonsFromConfig()
-
-	loadAPIAllDatas()
 
 	// Respond to http resquests
 	http.HandleFunc("/config", configViewHandler)

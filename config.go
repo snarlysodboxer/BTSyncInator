@@ -21,6 +21,11 @@ var (
 	settings       = Settings{}
 )
 
+type Settings struct {
+	PrivateKeyFilePath string
+	ServeAddress       string
+}
+
 func readSlashCreateConfig() {
 	if _, err := os.Stat(*configFilePath); os.IsNotExist(err) {
 		config.WriteConfigFile(*configFilePath, 0600, configHeader)
@@ -37,14 +42,38 @@ func loadConfigSettings() {
 	// Get general settings from default section of config file
 	privateKeyFilePath, err := config.GetString("default", "privatekeyfilepath")
 	if err != nil {
-		log.Fatalf("Error with config.GetString: %s", err)
+    if *debug {
+      log.Printf("Error with config.GetString: %s", err)
+    }
 	}
+  if privateKeyFilePath == "" {
+    if *debug {
+      log.Println("Private key path not set, using $HOME/.ssh/id_rsa")
+    }
+    privateKeyFilePath = (os.Getenv("HOME") + "/.ssh/id_rsa")
+  }
 	settings.PrivateKeyFilePath = privateKeyFilePath
 	serveAddress, err := config.GetString("default", "serveaddress")
 	if err != nil {
-		log.Fatalf("Error with config.GetString: %s", err)
+    if *debug {
+      log.Printf("Error with config.GetString: %s", err)
+    }
 	}
+  if serveAddress == "" {
+    if *debug {
+      log.Println("Serve Address not set, using localhost:10000")
+    }
+    serveAddress = "localhost:10000"
+  }
 	settings.ServeAddress = serveAddress
+  if config.AddOption("default", "privateKeyFilePath", privateKeyFilePath) {
+    if config.AddOption("default", "serveAddress", serveAddress) {
+      err := config.WriteConfigFile(*configFilePath, 0600, configHeader)
+      if err != nil {
+        log.Fatalf("Error with WriteConfigFile: %s", err)
+      }
+    }
+  }
 }
 
 func setupDaemonsFromConfig() {
@@ -68,12 +97,9 @@ func setupDaemonsFromConfig() {
 		daemon.Addresses.LocalAddrString = fmt.Sprintf("localhost:%d", 9000+sectionIndex)
 		daemon.Addresses.PrivateKeyPathString = settings.PrivateKeyFilePath
 		daemons = append(daemons, *daemon)
-		// Setup portforward
+		// Setup port-forward
 		if len(oldDaemons) != 0 {
 			for oldIndex, _ := range oldDaemons {
-				if *debug {
-					log.Printf("oldDaemons: %v", oldDaemons[oldIndex].Addresses)
-				}
 				if oldDaemons[oldIndex].Name == daemon.Name {
 					if oldDaemons[oldIndex].Forwarded == false {
 						go sshPortForward.ConnectAndForward(daemons[sectionIndex].Addresses)
@@ -82,9 +108,6 @@ func setupDaemonsFromConfig() {
 				}
 			}
 		} else {
-			if *debug {
-				log.Println(sectionIndex, daemons[sectionIndex])
-			}
 			go sshPortForward.ConnectAndForward(daemons[sectionIndex].Addresses)
 			daemons[sectionIndex].Forwarded = true
 		}
