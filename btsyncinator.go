@@ -186,7 +186,7 @@ func main() {
 		log.Println("Debug mode enabled")
 	}
 
-	loadConfigSettings()
+	loadSettings()
 
 	setupDaemonsFromConfig()
 
@@ -198,5 +198,9 @@ func main() {
 	http.HandleFunc("/folder/add/existing", folderAddExistingHandler)
 	http.HandleFunc("/folder/remove", folderRemoveHandler)
 	http.HandleFunc("/", rootHandler)
-	http.ListenAndServe(settings.ServeAddress, nil)
+  if settings.UseTLS {
+    http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
+  } else {
+    http.ListenAndServe(settings.ServeAddress, nil)
+  }
 }

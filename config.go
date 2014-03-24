@@ -22,8 +22,11 @@ var (
 )
 
 type Settings struct {
-	PrivateKeyFilePath string
+	PrivateKeyPath     string
 	ServeAddress       string
+  UseTLS             bool
+  TLSKeyPath         string
+  TLSCertPath        string
 }
 
 func readSlashCreateConfig() {
@@ -37,22 +40,24 @@ func readSlashCreateConfig() {
 	}
 }
 
-func loadConfigSettings() {
+// Get general settings from default section of config file
+func loadSettings() {
 	readSlashCreateConfig()
-	// Get general settings from default section of config file
-	privateKeyFilePath, err := config.GetString("default", "privatekeyfilepath")
+  // Private key file path
+	privateKeyPath, err := config.GetString("default", "privateKeyPath")
 	if err != nil {
     if *debug {
       log.Printf("Error with config.GetString: %s", err)
     }
 	}
-  if privateKeyFilePath == "" {
+  if privateKeyPath == "" {
     if *debug {
       log.Println("Private key path not set, using $HOME/.ssh/id_rsa")
     }
-    privateKeyFilePath = (os.Getenv("HOME") + "/.ssh/id_rsa")
+    privateKeyPath = (os.Getenv("HOME") + "/.ssh/id_rsa")
   }
-	settings.PrivateKeyFilePath = privateKeyFilePath
+	settings.PrivateKeyPath = privateKeyPath
+  // Serve Address
 	serveAddress, err := config.GetString("default", "serveaddress")
 	if err != nil {
     if *debug {
@@ -66,22 +71,59 @@ func loadConfigSettings() {
     serveAddress = "localhost:10000"
   }
 	settings.ServeAddress = serveAddress
-  if config.AddOption("default", "privateKeyFilePath", privateKeyFilePath) {
-    if config.AddOption("default", "serveAddress", serveAddress) {
-      err := config.WriteConfigFile(*configFilePath, 0600, configHeader)
-      if err != nil {
-        log.Fatalf("Error with WriteConfigFile: %s", err)
-      }
+  // TLS private key file path
+	tlsKeyPath, err := config.GetString("default", "tlsKeyPath")
+	if err != nil {
+    if *debug {
+      log.Printf("Error with config.GetString: %s", err)
     }
+	}
+	settings.TLSKeyPath = tlsKeyPath
+  // TLS cert file path
+	tlsCertPath, err := config.GetString("default", "tlsCertPath")
+	if err != nil {
+    if *debug {
+      log.Printf("Error with config.GetString: %s", err)
+    }
+	}
+	settings.TLSCertPath = tlsCertPath
+  // Use TLS bool
+	useTLS, err := config.GetBool("default", "useTLS")
+	if err != nil {
+    if *debug {
+      log.Printf("Error with config.GetString: %s", err)
+    }
+	}
+  if ! useTLS {
+    if *debug {
+      log.Println("Use TLS set to false.")
+    }
+  } else if settings.TLSKeyPath == "" && settings.TLSCertPath == "" {
+    if *debug {
+      log.Println("Use TLS set to true, but TLS key path and/or cert path not set, not using HTTPS")
+    }
+    useTLS = false
+  } else {
+    if *debug {
+      log.Println("Use TLS set to true.")
+    }
+  }
+	settings.UseTLS = useTLS
+  // Write changes to config file
+  config.AddOption("default", "privateKeyPath", privateKeyPath)
+  config.AddOption("default", "serveAddress", serveAddress)
+  config.AddOption("default", "useTLS", fmt.Sprintf("%t", useTLS))
+  config.AddOption("default", "tlsKeyPath", tlsKeyPath)
+  config.AddOption("default", "tlsCertPath", tlsCertPath)
+  err = config.WriteConfigFile(*configFilePath, 0600, configHeader)
+  if err != nil {
+    log.Fatalf("Error with WriteConfigFile: %s", err)
   }
 }
 
 func setupDaemonsFromConfig() {
 	// copy old Daemons
 	oldDaemons := daemons
-	if *debug {
-		log.Printf("oldDaemons: %v", oldDaemons)
-	}
 	readSlashCreateConfig()
 	allSections := config.GetSections()
 	// Get Daemons from config file
@@ -95,7 +137,7 @@ func setupDaemonsFromConfig() {
 		daemon.Addresses.ServerAddrString, _ = config.GetString(section, "serverAddrString")
 		daemon.Addresses.RemoteAddrString, _ = config.GetString(section, "daemonAddrString")
 		daemon.Addresses.LocalAddrString = fmt.Sprintf("localhost:%d", 9000+sectionIndex)
-		daemon.Addresses.PrivateKeyPathString = settings.PrivateKeyFilePath
+		daemon.Addresses.PrivateKeyPathString = settings.PrivateKeyPath
 		daemons = append(daemons, *daemon)
 		// Setup port-forward
 		if len(oldDaemons) != 0 {
