@@ -25,7 +25,7 @@ func genCACert(caName string, years int) {
     BasicConstraintsValid: true,
     SerialNumber: new(big.Int).SetInt64(0),
     Subject: pkix.Name{
-      CommonName:   os.Getenv("HOSTNAME"),
+      CommonName:   caName,
       Organization: []string{caName},
     },
     NotBefore:    now.Add(-5 * time.Minute).UTC(),
