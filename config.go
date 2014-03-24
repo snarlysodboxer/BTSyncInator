@@ -22,11 +22,11 @@ var (
 )
 
 type Settings struct {
-	PrivateKeyPath     string
-	ServeAddress       string
-  UseTLS             bool
-  TLSKeyPath         string
-  TLSCertPath        string
+	PrivateKeyPath string
+	ServeAddress   string
+	UseTLS         bool
+	TLSKeyPath     string
+	TLSCertPath    string
 }
 
 func readSlashCreateConfig() {
@@ -43,85 +43,85 @@ func readSlashCreateConfig() {
 // Get general settings from default section of config file
 func loadSettings() {
 	readSlashCreateConfig()
-  // Private key file path
+	// Private key file path
 	privateKeyPath, err := config.GetString("default", "privateKeyPath")
 	if err != nil {
-    if *debug {
-      log.Printf("Error with config.GetString: %s", err)
-    }
+		if *debug {
+			log.Printf("Error with config.GetString: %s", err)
+		}
 	}
-  if privateKeyPath == "" {
-    if *debug {
-      log.Println("Private key path not set, using $HOME/.ssh/id_rsa")
-    }
-    privateKeyPath = (os.Getenv("HOME") + "/.ssh/id_rsa")
-  }
+	if privateKeyPath == "" {
+		if *debug {
+			log.Println("Private key path not set, using $HOME/.ssh/id_rsa")
+		}
+		privateKeyPath = (os.Getenv("HOME") + "/.ssh/id_rsa")
+	}
 	settings.PrivateKeyPath = privateKeyPath
-  // Serve Address
+	// Serve Address
 	serveAddress, err := config.GetString("default", "serveaddress")
 	if err != nil {
-    if *debug {
-      log.Printf("Error with config.GetString: %s", err)
-    }
+		if *debug {
+			log.Printf("Error with config.GetString: %s", err)
+		}
 	}
-  if serveAddress == "" {
-    if *debug {
-      log.Println("Serve Address not set, using localhost:10000")
-    }
-    serveAddress = "localhost:10000"
-  }
+	if serveAddress == "" {
+		if *debug {
+			log.Println("Serve Address not set, using localhost:10000")
+		}
+		serveAddress = "localhost:10000"
+	}
 	settings.ServeAddress = serveAddress
-  // TLS private key file path
+	// TLS private key file path
 	tlsKeyPath, err := config.GetString("default", "tlsKeyPath")
 	if err != nil {
-    if *debug {
-      log.Printf("Error with config.GetString: %s", err)
-    }
+		if *debug {
+			log.Printf("Error with config.GetString: %s", err)
+		}
 	}
 	settings.TLSKeyPath = tlsKeyPath
-  // TLS cert file path
+	// TLS cert file path
 	tlsCertPath, err := config.GetString("default", "tlsCertPath")
 	if err != nil {
-    if *debug {
-      log.Printf("Error with config.GetString: %s", err)
-    }
+		if *debug {
+			log.Printf("Error with config.GetString: %s", err)
+		}
 	}
 	settings.TLSCertPath = tlsCertPath
-  // Use TLS bool
+	// Use TLS bool
 	useTLS, err := config.GetBool("default", "useTLS")
 	if err != nil {
-    if *debug {
-      log.Printf("Error with config.GetString: %s", err)
-    }
+		if *debug {
+			log.Printf("Error with config.GetString: %s", err)
+		}
 	}
-  if ! useTLS {
-    if *debug {
-      log.Println("Use TLS set to false.")
-    }
-  } else if settings.TLSKeyPath == "" && settings.TLSCertPath == "" {
-    if *debug {
-      log.Println("Use TLS set to true, but TLS key path and/or cert path not set, generating self-signed cert.")
-    }
-    hostname, _ := os.Hostname()
-    genCACert(hostname, 4)
-    settings.TLSKeyPath = hostname + ".key"
-    settings.TLSCertPath = hostname + ".crt"
-  } else {
-    if *debug {
-      log.Println("Use TLS set to true.")
-    }
-  }
+	if useTLS == false {
+		if *debug {
+			log.Println("Use TLS set to false.")
+		}
+	} else if settings.TLSKeyPath == "" && settings.TLSCertPath == "" {
+		if *debug {
+			log.Println("UseTLS set to true, but TLS key path and/or cert path not set, generating self-signed cert.")
+		}
+		hostname, _ := os.Hostname()
+		genCACert(hostname, 4)
+		settings.TLSKeyPath = hostname + ".key"
+		settings.TLSCertPath = hostname + ".crt"
+	} else {
+		if *debug {
+			log.Println("Use TLS set to true.")
+		}
+	}
 	settings.UseTLS = useTLS
-  // Write changes to config file
-  config.AddOption("default", "privateKeyPath", privateKeyPath)
-  config.AddOption("default", "serveAddress", serveAddress)
-  config.AddOption("default", "useTLS", fmt.Sprintf("%t", useTLS))
-  config.AddOption("default", "tlsKeyPath", tlsKeyPath)
-  config.AddOption("default", "tlsCertPath", tlsCertPath)
-  err = config.WriteConfigFile(*configFilePath, 0600, configHeader)
-  if err != nil {
-    log.Fatalf("Error with WriteConfigFile: %s", err)
-  }
+	// Write changes to config file
+	config.AddOption("default", "privateKeyPath", privateKeyPath)
+	config.AddOption("default", "serveAddress", serveAddress)
+	config.AddOption("default", "useTLS", fmt.Sprintf("%t", useTLS))
+	config.AddOption("default", "tlsKeyPath", tlsKeyPath)
+	config.AddOption("default", "tlsCertPath", tlsCertPath)
+	err = config.WriteConfigFile(*configFilePath, 0600, configHeader)
+	if err != nil {
+		log.Fatalf("Error with WriteConfigFile: %s", err)
+	}
 }
 
 func setupDaemonsFromConfig() {
