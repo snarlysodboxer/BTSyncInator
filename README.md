@@ -7,7 +7,7 @@ BTSyncInator
     btsyncinator [--config path/to/config.file] [--private-key path/to/privatekey] [--debug]
 
 ###Example:
-    btsyncinator --config .btsyncinator.conf --private-key ~/.ssh/id_rsa
+    btsyncinator --config .btsyncinator.conf
 
 ###Example config file:
     # Configuration file for BTSyncInator:
@@ -16,6 +16,10 @@ BTSyncInator
     [default]
     privatekeyfilepath=/home/user/.ssh/id_rsa
     serveaddress=localhost:10000
+    tlskeypath=
+    tlscertpath=
+    # set usetls to true and leave tlskeypath & tlscertpath blank to generate a self-signed certificate.
+    usetls=true
 
     [btsync-tester]
     sshuserstring=root
