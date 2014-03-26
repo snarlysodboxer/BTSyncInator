@@ -24,6 +24,7 @@ var (
 type Settings struct {
 	PrivateKeyPath string
 	ServeAddress   string
+	DigestPath     string
 	UseTLS         bool
 	TLSKeyPath     string
 	TLSCertPath    string
@@ -71,6 +72,20 @@ func loadSettings() {
 		serveAddress = "localhost:10000"
 	}
 	settings.ServeAddress = serveAddress
+	// Digest File
+	digestPath, err := config.GetString("default", "digestPath")
+	if err != nil {
+		if *debug {
+			log.Printf("Error with config.GetString: %s", err)
+		}
+	}
+	if digestPath == "" {
+		if *debug {
+			log.Println("Digest Path not set, not using login authorization")
+		}
+		digestPath = ""
+	}
+	settings.DigestPath = digestPath
 	// TLS private key file path
 	tlsKeyPath, err := config.GetString("default", "tlsKeyPath")
 	if err != nil {
@@ -118,6 +133,7 @@ func loadSettings() {
 	config.AddOption("default", "useTLS", fmt.Sprintf("%t", useTLS))
 	config.AddOption("default", "tlsKeyPath", tlsKeyPath)
 	config.AddOption("default", "tlsCertPath", tlsCertPath)
+	config.AddOption("default", "digestPath", digestPath)
 	err = config.WriteConfigFile(*configFilePath, 0600, configHeader)
 	if err != nil {
 		log.Fatalf("Error with WriteConfigFile: %s", err)

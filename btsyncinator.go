@@ -190,17 +190,34 @@ func main() {
 
 	setupDaemonsFromConfig()
 
-	// Respond to http resquests
-	http.HandleFunc("/config", configViewHandler)
-	http.HandleFunc("/config/delete", configDeleteHandler)
-	http.HandleFunc("/config/create", configCreateHandler)
-	http.HandleFunc("/folder/add/new", folderAddNewHandler)
-	http.HandleFunc("/folder/add/existing", folderAddExistingHandler)
-	http.HandleFunc("/folder/remove", folderRemoveHandler)
-	http.HandleFunc("/", rootHandler)
-	if settings.UseTLS {
-		http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
+	if settings.DigestPath == "" {
+		// Respond to http resquests
+		http.HandleFunc("/config", configViewHandler)
+		http.HandleFunc("/config/delete", configDeleteHandler)
+		http.HandleFunc("/config/create", configCreateHandler)
+		http.HandleFunc("/folder/add/new", folderAddNewHandler)
+		http.HandleFunc("/folder/add/existing", folderAddExistingHandler)
+		http.HandleFunc("/folder/remove", folderRemoveHandler)
+		http.HandleFunc("/", rootHandler)
+		if settings.UseTLS {
+			http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
+		} else {
+			http.ListenAndServe(settings.ServeAddress, nil)
+		}
 	} else {
-		http.ListenAndServe(settings.ServeAddress, nil)
+		digestAuth := loadDigestAuth("BTSyncInator")
+		// Respond to http resquests
+		http.HandleFunc("/config", digestAuth.JustCheck(configViewHandler))
+		http.HandleFunc("/config/delete", digestAuth.JustCheck(configDeleteHandler))
+		http.HandleFunc("/config/create", digestAuth.JustCheck(configCreateHandler))
+		http.HandleFunc("/folder/add/new", digestAuth.JustCheck(folderAddNewHandler))
+		http.HandleFunc("/folder/add/existing", digestAuth.JustCheck(folderAddExistingHandler))
+		http.HandleFunc("/folder/remove", digestAuth.JustCheck(folderRemoveHandler))
+		http.HandleFunc("/", digestAuth.JustCheck(rootHandler))
+		if settings.UseTLS {
+			http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
+		} else {
+			http.ListenAndServe(settings.ServeAddress, nil)
+		}
 	}
 }
