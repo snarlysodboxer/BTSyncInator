@@ -50,7 +50,7 @@ func genCACert(caName string, years int) {
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
 	if *debug {
-		log.Print("Written " + caName + ".crt\n")
+		log.Print("Wrote " + caName + ".crt\n")
 	}
 
 	keyOut, err := os.OpenFile(caName+".key", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -62,6 +62,6 @@ func genCACert(caName string, years int) {
 		Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 	keyOut.Close()
 	if *debug {
-		log.Print("Written " + caName + ".key\n")
+		log.Print("Wrote " + caName + ".key\n")
 	}
 }

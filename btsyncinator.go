@@ -127,7 +127,7 @@ func loadAPIFoldersDatas() {
 
 func rootHandler(writer http.ResponseWriter, request *http.Request) {
 	loadAPIAllDatas()
-	tmpl := template.Must(template.ParseFiles("root_view.html"))
+	tmpl := template.Must(template.ParseFiles("root-view.html"))
 	tmpl.Execute(writer, daemons)
 }
 
@@ -179,6 +179,15 @@ func folderRemoveHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
+func useDigestAuthOrNot(handler http.HandlerFunc) http.HandlerFunc {
+	if settings.DigestPath == "" {
+    return handler
+	} else {
+    digestAuth := loadDigestAuth("BTSyncInator")
+    return digestAuth.JustCheck(handler)
+  }
+}
+
 func main() {
 	// Parse Command line flags
 	flag.Parse()
@@ -190,34 +199,17 @@ func main() {
 
 	setupDaemonsFromConfig()
 
-	if settings.DigestPath == "" {
-		// Respond to http resquests
-		http.HandleFunc("/config", configViewHandler)
-		http.HandleFunc("/config/delete", configDeleteHandler)
-		http.HandleFunc("/config/create", configCreateHandler)
-		http.HandleFunc("/folder/add/new", folderAddNewHandler)
-		http.HandleFunc("/folder/add/existing", folderAddExistingHandler)
-		http.HandleFunc("/folder/remove", folderRemoveHandler)
-		http.HandleFunc("/", rootHandler)
-		if settings.UseTLS {
-			http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
-		} else {
-			http.ListenAndServe(settings.ServeAddress, nil)
-		}
-	} else {
-		digestAuth := loadDigestAuth("BTSyncInator")
-		// Respond to http resquests
-		http.HandleFunc("/config", digestAuth.JustCheck(configViewHandler))
-		http.HandleFunc("/config/delete", digestAuth.JustCheck(configDeleteHandler))
-		http.HandleFunc("/config/create", digestAuth.JustCheck(configCreateHandler))
-		http.HandleFunc("/folder/add/new", digestAuth.JustCheck(folderAddNewHandler))
-		http.HandleFunc("/folder/add/existing", digestAuth.JustCheck(folderAddExistingHandler))
-		http.HandleFunc("/folder/remove", digestAuth.JustCheck(folderRemoveHandler))
-		http.HandleFunc("/", digestAuth.JustCheck(rootHandler))
-		if settings.UseTLS {
-			http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
-		} else {
-			http.ListenAndServe(settings.ServeAddress, nil)
-		}
-	}
+  // Respond to http resquests
+  http.HandleFunc("/config", useDigestAuthOrNot(configViewHandler))
+  http.HandleFunc("/config/delete", useDigestAuthOrNot(configDeleteHandler))
+  http.HandleFunc("/config/create", useDigestAuthOrNot(configCreateHandler))
+  http.HandleFunc("/folder/add/new", useDigestAuthOrNot(folderAddNewHandler))
+  http.HandleFunc("/folder/add/existing", useDigestAuthOrNot(folderAddExistingHandler))
+  http.HandleFunc("/folder/remove", useDigestAuthOrNot(folderRemoveHandler))
+  http.HandleFunc("/", useDigestAuthOrNot(rootHandler))
+  if settings.UseTLS {
+    http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
+  } else {
+    http.ListenAndServe(settings.ServeAddress, nil)
+  }
 }

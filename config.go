@@ -176,7 +176,7 @@ func setupDaemonsFromConfig() {
 }
 
 func configViewHandler(writer http.ResponseWriter, request *http.Request) {
-	tmpl, err := template.ParseFiles("config_view.html")
+	tmpl, err := template.ParseFiles("config-view.html")
 	if err != nil {
 		log.Fatalf("Error with ParseFiles! %s", err)
 	}
