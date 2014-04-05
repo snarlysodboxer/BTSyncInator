@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/snarlysodboxer/sshPortForward"
 	btsync "github.com/vole/btsync-api"
+	auth "github.com/abbot/go-http-auth"
 	"html/template"
 	"log"
 	"net"
@@ -179,11 +180,10 @@ func folderRemoveHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func useDigestAuthOrNot(handler http.HandlerFunc) http.HandlerFunc {
+func useDigestAuthOrNot(digestAuth auth.DigestAuth, handler http.HandlerFunc) http.HandlerFunc {
 	if settings.DigestPath == "" {
     return handler
 	} else {
-    digestAuth := loadDigestAuth("BTSyncInator")
     return digestAuth.JustCheck(handler)
   }
 }
@@ -199,14 +199,16 @@ func main() {
 
 	setupDaemonsFromConfig()
 
+  digestAuth := loadDigestAuth("BTSyncInator")
+
   // Respond to http resquests
-  http.HandleFunc("/config", useDigestAuthOrNot(configViewHandler))
-  http.HandleFunc("/config/delete", useDigestAuthOrNot(configDeleteHandler))
-  http.HandleFunc("/config/create", useDigestAuthOrNot(configCreateHandler))
-  http.HandleFunc("/folder/add/new", useDigestAuthOrNot(folderAddNewHandler))
-  http.HandleFunc("/folder/add/existing", useDigestAuthOrNot(folderAddExistingHandler))
-  http.HandleFunc("/folder/remove", useDigestAuthOrNot(folderRemoveHandler))
-  http.HandleFunc("/", useDigestAuthOrNot(rootHandler))
+  http.HandleFunc("/config", useDigestAuthOrNot(digestAuth, configViewHandler))
+  http.HandleFunc("/config/delete", useDigestAuthOrNot(digestAuth, configDeleteHandler))
+  http.HandleFunc("/config/create", useDigestAuthOrNot(digestAuth, configCreateHandler))
+  http.HandleFunc("/folder/add/new", useDigestAuthOrNot(digestAuth, folderAddNewHandler))
+  http.HandleFunc("/folder/add/existing", useDigestAuthOrNot(digestAuth, folderAddExistingHandler))
+  http.HandleFunc("/folder/remove", useDigestAuthOrNot(digestAuth, folderRemoveHandler))
+  http.HandleFunc("/", useDigestAuthOrNot(digestAuth, rootHandler))
   if settings.UseTLS {
     http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
   } else {

@@ -2,16 +2,16 @@
 
 {{range .}}
   {{ $daemonName := .Name }}
+  <div style="border:2px solid #a1a1a1; border-radius:25px; padding:10px 40px 10px 40px; background:#dddddd;" >
   {{if not .APIData.OS.Name}}
     <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has nil APIData</h2>
   {{else if .APIData.Error}}
     <h2>BTSync Daemon On {{.Name}}, ({{.Addresses.ServerAddrString}}) has Error {{.APIData.Error}}</h2>
   {{else}}
-    <h2>BTSync Daemon On {{.APIData.OS.Name}} machine {{.Name}}, ({{.Addresses.ServerAddrString}})</h2>
+    <h2>BTSync Daemon On {{.APIData.OS.Name}} machine {{.Name}}</h2>
     <div>
       {{with .APIData}}
         <ul>
-          <li>{{printf "Daemon Read Time: %s" .ReadTime}}</li>
           {{with .Speeds}}
             <li>{{printf "Daemon Download Speed: %d" .Download}}</li>
             <li>{{printf "Daemon Upload Speed: %d" .Upload}}</li>
@@ -29,6 +29,7 @@
           <input type="submit" value="Add a folder to Sync (with existing Secret)">
         </form>
         {{range .Folders}}
+        <div style="border:2px solid #a1a1a1; border-radius:25px; padding:5px 20px 5px 20px; background:#B0B0B0;" >
         <h4>
           <form action="/folder/remove" method="POST">
             {{with .Folder}}
@@ -48,15 +49,18 @@
           {{with .Secrets}}
             <li>{{printf "RW Secret: %s" .ReadWrite}}</li>
             <li>{{printf "RO Secret: %s" .ReadOnly}}</li>
-            <li>{{printf "Encryption Secret: %s" .Encryption}}</li>
           {{end}}
           <li>Only syncs with:</li>
           {{range .SyncHosts}}
             <li>{{printf "%s" .}}</li>
           {{end}}
         </ul>
+        </div>
         {{end}}
       {{end}}
     </div>
+    <div>
+    </div>
   {{end}}
+  </div>
 {{end}}
