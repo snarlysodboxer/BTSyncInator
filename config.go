@@ -83,6 +83,7 @@ func loadSettings() {
 		if *debug {
 			log.Println("Digest Path not set, not using login authorization")
 		}
+		//digestPath = ".btsync-digest"
 		digestPath = ""
 	}
 	settings.DigestPath = digestPath

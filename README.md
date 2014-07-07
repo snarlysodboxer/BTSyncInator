@@ -14,7 +14,7 @@ BTSyncInator
     # The "default" section is for general options,
     # all other sections represent a running BTSync daemon.
     [default]
-    privatekeyfilepath=/home/user/.ssh/id_rsa
+    privatekeypath=/home/user/.ssh/id_rsa
     serveaddress=localhost:10000
     # set usetls to true and leave tlskeypath or tlscertpath blank to generate a self-signed certificate:
     usetls=true

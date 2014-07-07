@@ -50,10 +50,11 @@
             <li>{{printf "RW Secret: %s" .ReadWrite}}</li>
             <li>{{printf "RO Secret: %s" .ReadOnly}}</li>
           {{end}}
-          <li>Only syncs with:</li>
+          <li>Only syncs with:
           {{range .SyncHosts}}
-            <li>{{printf "%s" .}}</li>
+            {{printf "%s" .}}
           {{end}}
+          </li>
         </ul>
         </div>
         {{end}}

@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/snarlysodboxer/sshPortForward"
 	btsync "github.com/vole/btsync-api"
-	auth "github.com/abbot/go-http-auth"
 	"html/template"
 	"log"
 	"net"
@@ -111,10 +111,7 @@ func loadAPIFoldersDatas() {
 				log.Printf("Error: %v", err)
 			}
 			// Get Known Hosts for folder:
-			//// TODO: Fix "json: cannot unmarshal object into Go
-			////     value of type btsync_api.GetFolderHostsResponse" bug
-			////folder.SyncHosts, err = daemons[index].API.GetFolderHosts(apiFolder.Secret)
-			folder.SyncHosts, _ = daemons[index].API.GetFolderHosts(apiFolder.Secret)
+			folder.SyncHosts, err = daemons[index].API.GetFolderHosts(apiFolder.Secret)
 			if *debug && err != nil {
 				log.Printf("Error: %v", err)
 			}
@@ -182,10 +179,10 @@ func folderRemoveHandler(writer http.ResponseWriter, request *http.Request) {
 
 func useDigestAuthOrNot(digestAuth auth.DigestAuth, handler http.HandlerFunc) http.HandlerFunc {
 	if settings.DigestPath == "" {
-    return handler
+		return handler
 	} else {
-    return digestAuth.JustCheck(handler)
-  }
+		return digestAuth.JustCheck(handler)
+	}
 }
 
 func main() {
@@ -199,19 +196,22 @@ func main() {
 
 	setupDaemonsFromConfig()
 
-  digestAuth := loadDigestAuth("BTSyncInator")
+  var digestAuth auth.DigestAuth
+	if settings.DigestPath != "" {
+		digestAuth = loadDigestAuth("BTSyncInator")
+	}
 
-  // Respond to http resquests
-  http.HandleFunc("/config", useDigestAuthOrNot(digestAuth, configViewHandler))
-  http.HandleFunc("/config/delete", useDigestAuthOrNot(digestAuth, configDeleteHandler))
-  http.HandleFunc("/config/create", useDigestAuthOrNot(digestAuth, configCreateHandler))
-  http.HandleFunc("/folder/add/new", useDigestAuthOrNot(digestAuth, folderAddNewHandler))
-  http.HandleFunc("/folder/add/existing", useDigestAuthOrNot(digestAuth, folderAddExistingHandler))
-  http.HandleFunc("/folder/remove", useDigestAuthOrNot(digestAuth, folderRemoveHandler))
-  http.HandleFunc("/", useDigestAuthOrNot(digestAuth, rootHandler))
-  if settings.UseTLS {
-    http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
-  } else {
-    http.ListenAndServe(settings.ServeAddress, nil)
-  }
+	// Respond to http resquests
+	http.HandleFunc("/config", useDigestAuthOrNot(digestAuth, configViewHandler))
+	http.HandleFunc("/config/delete", useDigestAuthOrNot(digestAuth, configDeleteHandler))
+	http.HandleFunc("/config/create", useDigestAuthOrNot(digestAuth, configCreateHandler))
+	http.HandleFunc("/folder/add/new", useDigestAuthOrNot(digestAuth, folderAddNewHandler))
+	http.HandleFunc("/folder/add/existing", useDigestAuthOrNot(digestAuth, folderAddExistingHandler))
+	http.HandleFunc("/folder/remove", useDigestAuthOrNot(digestAuth, folderRemoveHandler))
+	http.HandleFunc("/", useDigestAuthOrNot(digestAuth, rootHandler))
+	if settings.UseTLS {
+		http.ListenAndServeTLS(settings.ServeAddress, settings.TLSCertPath, settings.TLSKeyPath, nil)
+	} else {
+		http.ListenAndServe(settings.ServeAddress, nil)
+	}
 }
